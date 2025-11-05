@@ -73,7 +73,10 @@ module Api::V1
         result = sheet_service.get_spreadsheet_values(spreadsheet_id, "#{sheet_name}")
         values = result.values || []
 
-        render json: { success: 'Fetched Successfully!' , sheet_name: sheet_name, values: values }
+        spreadsheet = sheet_service.get_spreadsheet(spreadsheet_id, fields: 'properties(title)')
+        spreadsheet_title = spreadsheet.properties.title
+
+        render json: { success: 'Fetched Successfully!', spreadsheet_title: spreadsheet_title, sheet_name: sheet_name, values: values }
       rescue Google::Apis::ClientError => e
         render json: { error: 'Invalid spreadsheet or sheet access denied.' }, status: :bad_request
       rescue StandardError => e

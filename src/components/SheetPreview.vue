@@ -1,6 +1,9 @@
 <template>
   <div>
-    <h2>{{ sheetName }}</h2>
+    <div class="title">
+      <h1 v-if="sheetData" class="spreadsheet-title">{{ sheetData.spreadsheet_title }} / </h1>
+      <h2 class="sheet-name">{{ sheetName }}</h2>
+    </div>
     <span class="back-btn">
       <router-link :to="`/sheets`">Back</router-link>
     </span>
@@ -25,35 +28,45 @@
 </template>
 
 <script setup>
-  import { onMounted, ref } from 'vue'
-  import { useStore } from 'vuex'
-  import { useRoute } from 'vue-router'
+import { onMounted, ref } from 'vue'
+import { useStore } from 'vuex'
+import { useRoute } from 'vue-router'
 
-  const store = useStore()
-  const route = useRoute()
+const store = useStore()
+const route = useRoute()
 
-  const spreadsheetId = route.params.spreadsheetId
-  const sheetName = route.params.sheetName
+const spreadsheetId = route.params.spreadsheetId
+const sheetName = route.params.sheetName
 
-  const sheetData = ref(null)
-  const loading = ref(true)
-  const error = ref(null)
+const sheetData = ref(null)
+const loading = ref(true)
+const error = ref(null)
 
-  onMounted(async () => {
-    try {
-      loading.value = true
-      error.value = null
-      await store.dispatch('sheets/fetchSheetPreview', { spreadsheetId, sheetName })
-      sheetData.value = store.getters['sheets/selectedSheetData']
-    } catch (e) {
-      error.value = 'Failed to load sheet preview.'
-    } finally {
-      loading.value = false
-    }
-  })
+onMounted(async () => {
+  try {
+    loading.value = true
+    error.value = null
+    await store.dispatch('sheets/fetchSheetPreview', { spreadsheetId, sheetName })
+    sheetData.value = store.getters['sheets/selectedSheetData']
+  } catch (e) {
+    error.value = 'Failed to load sheet preview.'
+  } finally {
+    loading.value = false
+  }
+})
 </script>
 
 <style scoped>
+.title {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.sheet-name {
+  margin-bottom: 0.7rem;
+}
+
 .loading-modal {
   position: fixed;
   top: 0;
@@ -99,6 +112,12 @@
 .sheet-preview {
   margin-top: 1rem;
   overflow-x: auto;
+}
+
+.spreadsheet-title {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
 }
 
 .sheet-preview table {
