@@ -6,7 +6,7 @@
     <button type="submit">Login</button>
   </form>
 
-  <button class="redirectBtn" @click="loginGoogle">Sign in with Google ( Calendar API )</button>
+  <button class="redirectBtn" @click="loginGoogle">Sign in with Google ( API )</button>
 
   <button class="redirectBtn" @click="loginWithGoogle">Pop with Google ( Access Token Only )</button>
 
@@ -31,7 +31,7 @@ function loginWithGoogle() {
   if (!tokenClient) {
     tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-      scope: "openid email profile https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events",
+      scope: "openid email profile https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.metadata.readonly",
       prompt: "consent",
       callback: async (tokenResponse) => {
         if (!tokenResponse.access_token) {

@@ -15,6 +15,8 @@ import User from '../views/Users.vue'
 import Profile from '../views/ProfilePage.vue'
 import AuthSuccess from "../views/AuthSuccess.vue";
 import Calendar from "../views/CalendarPage.vue";
+import Sheets from "../views/SheetsPage.vue";
+import SheetPreview from "../views/SheetPreviewPage.vue";
 import AdminAnnouncements from "../views/AdminAnnouncements.vue";
 
 const routes = [
@@ -34,6 +36,8 @@ const routes = [
   { path: "/profile", component: Profile },
   { path: "/auth/success", component: AuthSuccess },
   { path: "/calendar", component: Calendar },
+  { path: "/sheets", component: Sheets },
+  { path: "/preview/:spreadsheetId/:sheetName", component: SheetPreview , props: true },
   { path: "/announcements", component: AdminAnnouncements }
 ]
 

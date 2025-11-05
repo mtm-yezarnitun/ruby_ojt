@@ -45,7 +45,17 @@ class Api::V1::GoogleAuthController < ApplicationController
   def redirect
     client_id = ENV.fetch("GOOGLE_CLIENT_ID", nil)
     redirect_uri = "http://localhost:3000/api/v1/google_callback"
-    scope = "openid email profile https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events"
+    scopes = [
+      "openid",
+      "email",
+      "profile",
+      "https://www.googleapis.com/auth/calendar",
+      "https://www.googleapis.com/auth/calendar.events",
+      "https://www.googleapis.com/auth/spreadsheets",
+      "https://www.googleapis.com/auth/drive.metadata.readonly"
+    ]
+
+    scope = scopes.join(" ")
 
     url = "#{GOOGLE_AUTH_URL}?" + {
       client_id: client_id,

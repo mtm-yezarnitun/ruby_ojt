@@ -6,6 +6,7 @@ import auth from './modules/auth'
 import users from './modules/users'
 import profile from './modules/profile'
 import calendar from './modules/calendar'
+import sheets from './modules/sheets'
 import announcements from './modules/announcements'
 
 const store = createStore({
@@ -17,6 +18,7 @@ const store = createStore({
     users,
     profile,
     calendar,
+    sheets,
     announcements
     },
 

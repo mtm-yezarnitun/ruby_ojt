@@ -1,0 +1,117 @@
+import axios from "axios";
+
+const API_URL = "http://localhost:3000";
+
+const sheets = {
+  namespaced: true,
+  state() {
+    return {
+      spreadsheets: [],
+      selectedSpreadsheet: null,
+      selectedSheetData: null,
+      loading: false,
+      error: null
+    };
+  },
+  mutations: {
+    setSpreadsheets(state, spreadsheets) {
+      state.spreadsheets = spreadsheets;
+    },
+    setSelectedSpreadsheet(state, spreadsheet) {
+      state.selectedSpreadsheet = spreadsheet;
+    },
+    setLoading(state, loading) {
+      state.loading = loading;
+    },
+    setError(state, error) {
+      state.error = error;
+    },
+    clearError(state) {
+      state.error = null;
+    },
+    setSelectedSheetData(state, data) {
+      state.selectedSheetData = data;
+    },
+    clearSelectedSheetData(state) {
+      state.selectedSheetData = null;
+    }
+
+  },
+  actions: {
+    async fetchSpreadsheets({ commit, rootGetters }) {
+      commit('setLoading', true);
+      commit('clearError');
+
+      try {
+        const token = rootGetters['auth/token'] || localStorage.getItem('token');
+        if (!token) throw new Error("No authentication token found");
+
+        const response = await axios.get(`${API_URL}/api/v1/sheets`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        commit('setSpreadsheets', response.data.spreadsheets || []);
+      } catch (err) {
+        console.error("Failed to fetch spreadsheets:", err);
+        commit('setError', "Failed to fetch spreadsheets");
+      } finally {
+        commit('setLoading', false);
+      }
+    },
+
+    async fetchSpreadsheet({ commit, rootGetters }, spreadsheetId) {
+      commit('setLoading', true);
+      commit('clearError');
+
+      try {
+        const token = rootGetters['auth/token'] || localStorage.getItem('token');
+        if (!token) throw new Error("No authentication token found");
+
+        const response = await axios.get(`${API_URL}/api/v1/sheets/${spreadsheetId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        commit('setSelectedSpreadsheet', response.data);
+      } catch (err) {
+        console.error("Failed to fetch spreadsheet details:", err);
+        commit('setError', "Failed to fetch spreadsheet details");
+      } finally {
+        commit('setLoading', false);
+      }
+    },
+    async fetchSheetPreview({ commit, rootGetters }, { spreadsheetId, sheetName }) {
+      commit('setLoading', true);
+      commit('clearError');
+
+      try {
+        const token = rootGetters['auth/token'] || localStorage.getItem('token');
+        const response = await axios.get(
+          `${API_URL}/api/v1/sheets/${spreadsheetId}/sheet/${sheetName}/preview`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        commit('setSelectedSheetData', response.data);
+      } catch (err) {
+        console.error("Failed to fetch sheet preview:", err);
+        commit('setError', "Failed to fetch sheet preview");
+      } finally {
+        commit('setLoading', false);
+      }
+    },
+    clearSelectedSheetData({ commit }) {
+      commit('clearSelectedSheetData');
+    },
+    clearSelectedSpreadsheet({ commit }) {
+      commit('setSelectedSpreadsheet', null);
+    }
+  },
+  getters: {
+    spreadsheets: (state) => state.spreadsheets,
+    selectedSpreadsheet: (state) => state.selectedSpreadsheet,
+    selectedSheetData: (state) => state.selectedSheetData,
+    loading: (state) => state.loading,
+    hasSpreadsheets: (state) => state.spreadsheets.length > 0,
+    error: (state) => state.error
+  }
+};
+
+export default sheets;

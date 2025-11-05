@@ -1,3 +1,9 @@
+require 'signet/oauth_2/client'
+require 'google/apis/sheets_v4'
+require 'google/apis/drive_v3'
+require 'google/apis/calendar_v3'
+require 'signet/oauth_2/client'
+
 class User < ApplicationRecord
   devise :database_authenticatable,
          :registerable,
@@ -11,8 +17,6 @@ class User < ApplicationRecord
 
   has_many :posts, dependent: :destroy
   has_many :comments, dependent: :destroy
-
- 
 
   def google_calendar_service
     unless google_access_token
@@ -35,10 +39,76 @@ class User < ApplicationRecord
 
     begin
       service = Google::Apis::CalendarV3::CalendarService.new
-      service.client_options.application_name = 'Your App'
+      service.client_options.application_name = 'My App'
       service.authorization = google_access_token
       
       service.list_calendar_lists(max_results: 1)
+      
+      service
+      
+    rescue Google::Apis::AuthorizationError => e
+      update(google_access_token: nil, google_refresh_token: nil, google_token_expires_at: nil)
+      nil
+    rescue => e
+      nil
+    end
+  end
+
+  def google_sheets_service
+    return nil unless google_access_token
+
+    refresh_google_token if token_expired? && google_refresh_token.present?
+
+    client = Signet::OAuth2::Client.new(
+      access_token: google_access_token,
+      refresh_token: google_refresh_token,
+      client_id: ENV.fetch("GOOGLE_CLIENT_ID"),
+      client_secret: ENV.fetch("GOOGLE_CLIENT_SECRET"),
+      token_credential_uri: "https://oauth2.googleapis.com/token"
+    )
+
+    client.refresh! if token_expired? && google_refresh_token.present?
+
+    service = Google::Apis::SheetsV4::SheetsService.new
+    service.client_options.application_name = "My App"
+    service.authorization = client
+
+    service
+  rescue Google::Apis::AuthorizationError
+    update(google_access_token: nil, google_refresh_token: nil, google_token_expires_at: nil)
+    nil
+  end
+
+  def google_drive_service
+    unless google_access_token
+      return nil
+    end
+
+    if token_expired?
+      if google_refresh_token.present?
+        if refresh_google_token
+          Rails.logger.info "✅ Token refreshed successfully"
+        else
+          Rails.logger.error "❌ Token refresh failed"
+          return nil
+        end
+      else
+        update(google_access_token: nil, google_token_expires_at: nil)
+        return nil
+      end
+    end
+
+    begin
+      service = Google::Apis::DriveV3::DriveService.new
+      service.client_options.application_name = 'My App'
+      
+      service.authorization = Signet::OAuth2::Client.new(
+        access_token: google_access_token,
+        refresh_token: google_refresh_token,
+        client_id: ENV.fetch("GOOGLE_CLIENT_ID"),
+        client_secret: ENV.fetch("GOOGLE_CLIENT_SECRET"),
+        token_credential_uri: "https://oauth2.googleapis.com/token"
+      )
       
       service
       
@@ -96,6 +166,28 @@ class User < ApplicationRecord
     return false unless google_calendar_connected?
     
     service = google_calendar_service
+    service.present?
+  end
+
+  def google_sheets_connected?
+    google_access_token.present? && google_refresh_token.present?
+  end
+
+  def can_access_sheets?
+    return false unless google_sheets_connected?
+    
+    service = google_sheets_service
+    service.present?
+  end
+
+  def google_drive_connected?
+    google_access_token.present? && google_refresh_token.present?
+  end
+
+  def can_access_drive?
+    return false unless google_drive_connected?
+    
+    service = google_drive_service
     service.present?
   end
 

@@ -12,3 +12,6 @@
   event_notification:
     cron: "*/1 * * * *"   
     class: "EventNotificationJob"
+  announcement_scheduler:
+    cron: "*/1 * * * *"   
+    class: "AnnouncementSchedulerJob"

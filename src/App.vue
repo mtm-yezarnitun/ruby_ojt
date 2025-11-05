@@ -29,6 +29,9 @@
         <li v-if="user && user.provider === 'google_oauth2'  && user.google_refresh_token">
           <router-link to="/calendar">Calendar</router-link>
         </li>
+        <li v-if="user && user.provider === 'google_oauth2'  && user.google_refresh_token">
+          <router-link to="/sheets">Sheets</router-link>
+        </li>
         <li v-if="user && user.role =='admin'">
           <router-link to="/announcements">Announcements</router-link>
         </li>

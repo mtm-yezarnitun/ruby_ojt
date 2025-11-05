@@ -43,7 +43,7 @@ module Api::V1
 
       return render json: { error: 'Google Calendar not connected' }, status: :unauthorized if service.nil?
 
-      events = service.list_events(
+      events = service.list_events( 
         'primary',
         single_events: true,
         order_by: 'startTime',

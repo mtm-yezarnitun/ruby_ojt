@@ -33,6 +33,10 @@ Rails.application.routes.draw do
       get '/calendar/import_status', to: 'calendar#import_status'
       get '/calendar/download_template', to: 'calendar#download_template'
       
+      resources :sheets, only: [:index, :show ,:preview] do
+        get 'sheet/:sheet_name/preview', to: 'sheets#preview', on: :member
+      end
+      
       resources :posts do
         resources :comments, only: %i[index create destroy]
       end

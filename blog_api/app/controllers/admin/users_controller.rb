@@ -9,7 +9,7 @@ class Admin::UsersController < ApplicationController
     end
 
     def index
-        @users = User.where.not( id: current_user.id)
+        @users = User.where.not(id: current_user.id)
         render json: @users
     end
 
