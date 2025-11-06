@@ -21,16 +21,22 @@
       <table>
         <tbody>
           <tr v-for="(row, rIndex) in rows" :key="rIndex">
-              <td 
-                v-for="(cell, cIndex) in (row.values || [])" :key="cIndex"
+            <template v-for="(cell, cIndex) in (row.values || [])" :key="cIndex">
+              <td
+                v-if="!isMergedCellHidden(rIndex, cIndex)"
+                :rowspan="getMergeSpan(rIndex, cIndex).rowspan"
+                :colspan="getMergeSpan(rIndex, cIndex).colspan"
                 :style="getCellStyle(cell.effective_format)"
               >
                 {{ getCellText(cell.user_entered_value) }}
               </td>
+            </template>
           </tr>
         </tbody>
       </table>
     </div>
+
+    
 
     <div v-if="error">{{ error }}</div>
   </div>
@@ -51,15 +57,54 @@ const sheetData = ref(null)
 const loading = ref(true)
 const error = ref(null)
 
+// got both rows(data) and merges 
 const sheet = computed(() => sheetData.value?.spreadsheet?.sheets?.[0])
 
-const rows = computed(() => {
-    const rawRows = sheet.value?.data?.[0]?.row_data || []
+const merges = computed(() => sheet.value?.merges || [])
 
-    return rawRows.filter(row => 
-      row.values && row.values.some(cell => cell.user_entered_value)
-    )
+const rows = computed(() => {
+  const rawRows = sheet.value?.data?.[0]?.row_data || []
+  if (merges.value.length > 0) return rawRows
+  return rawRows.filter(row => row.values && row.values.some(cell => cell.user_entered_value))
 })
+
+function getMergeSpan(r, c) {
+  for (const merge of merges.value) {
+    const rowStart = merge.start_row_index  ?? 0
+    const rowEnd = merge.end_row_index  ?? 0
+    const colStart = merge.start_column_index ?? 0
+    const colEnd = merge.end_column_index ?? 0
+
+    if (r === rowStart && c === colStart) {
+      return {
+        rowspan: rowEnd - rowStart || 1,
+        colspan: colEnd - colStart || 1,
+      }
+    }
+  }
+  return { rowspan: 1, colspan: 1 }
+}
+
+function isMergedCellHidden(r, c) {
+  for (const merge of merges.value) {
+    const rowStart = merge.start_row_index ?? 0
+    const rowEnd = merge.end_row_index ?? 0
+    const colStart = merge.start_column_index ?? 0
+    const colEnd = merge.end_column_index ?? 0
+
+    if (
+      r >= rowStart &&
+      r < rowEnd &&
+      c >= colStart &&
+      c < colEnd &&
+      !(r === rowStart && c === colStart)
+    ) {
+      return true
+    }
+  }
+  return false
+}
+
 
 function getCellText(userEnteredValue) {
   if (!userEnteredValue) return ''
@@ -98,7 +143,7 @@ function getCellStyle(format) {
     color: text.foreground_color
       ? `rgb(${bgColor(text.foreground_color)})`
       : '#000',
-    textAlign: format.horizontal_alignment?.toLowerCase() || 'left',
+    textAlign: format.horizontal_alignment?.toLowerCase() || 'center',
     verticalAlign: format.vertical_alignment?.toLowerCase() || 'middle',
     border: '1px solid #ccc',
     padding: '4px 8px',
@@ -195,7 +240,6 @@ onMounted(async () => {
 .sheet-preview td {
   border: 1px solid #cbd5e0;
   padding: 0.4rem;
-  text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
 }

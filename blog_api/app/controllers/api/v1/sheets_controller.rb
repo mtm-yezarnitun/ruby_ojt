@@ -22,7 +22,7 @@ module Api::V1
           }
         end
 
-        render json: { success: 'Fetched Successfully!', spreadsheets: spreadsheets }
+        render json: { success: 'Fetched Successfully!', spreadsheets: spreadsheets }, status: :ok
       rescue Google::Apis::AuthorizationError => e
         Rails.logger.error "Drive auth error: #{e.message}"
         render json: { error: 'Google authorization expired. Please reconnect.' }, status: :unauthorized
@@ -52,7 +52,7 @@ module Api::V1
           id: spreadsheet_id,
           spreadsheet_title: spreadsheet.properties.title,
           sheets: sheets
-        }
+        }, status: :ok
 
       rescue Google::Apis::ClientError => e
         render json: { error: 'Invalid spreadsheet ID or access denied.' }, status: :bad_request
@@ -78,7 +78,7 @@ module Api::V1
           ranges: ["#{sheet_name}!A1:Z100"],
           fields: 'sheets.data.rowData.values.userEnteredValue,sheets.data.rowData.values.effectiveFormat.backgroundColor,sheets.data.rowData.values.effectiveFormat.textFormat,sheets.merges'
         )
-        render json: { success: 'Fetched Successfully!', spreadsheet_title: spreadsheet_ttl, spreadsheet: spreadsheet, sheet_name: sheet_name}
+        render json: { success: 'Fetched Successfully!', spreadsheet_title: spreadsheet_ttl, spreadsheet: spreadsheet, sheet_name: sheet_name}, status: :ok
       rescue Google::Apis::ClientError => e
         render json: { error: 'Invalid spreadsheet or sheet access denied.' }, status: :bad_request
 
