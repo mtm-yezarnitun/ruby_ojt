@@ -1,6 +1,6 @@
 module Api::V1
   class SheetsController < ApplicationController
-
+    before_action :authenticate_user!
     def index
       drive_service = current_user.google_drive_service
       return render json: { error: 'Google Drive not connected' }, status: :unauthorized if drive_service.nil?
@@ -70,15 +70,18 @@ module Api::V1
       sheet_name = params[:sheet_name] 
 
       begin
-        result = sheet_service.get_spreadsheet_values(spreadsheet_id, "#{sheet_name}")
-        values = result.values || []
+        spreadsheet_ttl= sheet_service.get_spreadsheet(spreadsheet_id, fields: 'properties(title)')
+        spreadsheet_title = spreadsheet_ttl.properties.title
 
-        spreadsheet = sheet_service.get_spreadsheet(spreadsheet_id, fields: 'properties(title)')
-        spreadsheet_title = spreadsheet.properties.title
-
-        render json: { success: 'Fetched Successfully!', spreadsheet_title: spreadsheet_title, sheet_name: sheet_name, values: values }
+        spreadsheet = sheet_service.get_spreadsheet(
+          spreadsheet_id,
+          ranges: ["#{sheet_name}!A1:Z100"],
+          fields: 'sheets.data.rowData.values.userEnteredValue,sheets.data.rowData.values.effectiveFormat.backgroundColor,sheets.data.rowData.values.effectiveFormat.textFormat,sheets.merges'
+        )
+        render json: { success: 'Fetched Successfully!', spreadsheet_title: spreadsheet_ttl, spreadsheet: spreadsheet, sheet_name: sheet_name}
       rescue Google::Apis::ClientError => e
         render json: { error: 'Invalid spreadsheet or sheet access denied.' }, status: :bad_request
+
       rescue StandardError => e
         Rails.logger.error "Sheets preview error: #{e.message}"
         render json: { error: 'Failed to load sheet preview.' }, status: :internal_server_error

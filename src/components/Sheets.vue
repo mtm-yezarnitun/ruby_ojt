@@ -19,7 +19,8 @@
 
     <div v-if="loading" class="loading-modal">
       <div class="loading-box">
-        <p>Loading...</p>
+        <div class="spinner"></div>
+        <p>Loading sheets...</p>
       </div>
     </div>
     
@@ -79,9 +80,23 @@ onMounted(() => {
   font-weight: bold;
   margin-bottom: 1rem;
 }
+.spinner {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #43e192;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 
 .sheet-tabs {
-list-style: none;
+    list-style: none;
     justify-content: center;
     align-self: center;
     align-items: center;
@@ -108,8 +123,7 @@ list-style: none;
 
 .loading-box {
   background-color: rgb(109, 109, 109);
-  padding: 3rem 5rem;
-  animation: floatPulse 1.5s ease-in-out infinite;
+  padding: 1rem 3rem;
   border-radius: 10%;
   font-size: 1.2rem;
   font-weight: bold;
@@ -117,31 +131,8 @@ list-style: none;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-@keyframes floatPulse {
-  0% {
-    transform: translateY(0) scale(1);
-    opacity: 0.85;
-  }
-
-  25% {
-    transform: translateY(-8px) scale(1.02);
-    opacity: 0.9;
-  }
-
-  50% {
-    transform: translateY(0) scale(1);
-    opacity: 0.85;
-  }
-
-  75% {
-    transform: translateY(8px) scale(1.02);
-    opacity: 0.9;
-  }
-
-  100% {
-    transform: translateY(0) scale(1);
-    opacity: 0.85;
-  }
+.loading-box p {
+  margin: 0 auto;
 }
 
 .sheet-tab {
