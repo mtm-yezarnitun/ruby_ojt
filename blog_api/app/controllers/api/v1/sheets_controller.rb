@@ -87,6 +87,5 @@ module Api::V1
         render json: { error: 'Failed to load sheet preview.' }, status: :internal_server_error
       end
     end
-
   end
 end

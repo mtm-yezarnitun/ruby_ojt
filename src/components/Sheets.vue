@@ -127,7 +127,6 @@ onMounted(() => {
   border-radius: 10%;
   font-size: 1.2rem;
   font-weight: bold;
-  opacity: 0.7;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 

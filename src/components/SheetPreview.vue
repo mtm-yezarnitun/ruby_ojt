@@ -105,7 +105,6 @@ function isMergedCellHidden(r, c) {
   return false
 }
 
-
 function getCellText(userEnteredValue) {
   if (!userEnteredValue) return ''
   return (
@@ -136,13 +135,11 @@ function getCellStyle(format) {
   return {
     backgroundColor: bg,
     fontWeight: text.bold ? 'bold' : 'normal',
+    fontFamily: text.font_family || 'Arial',
+    color: text.foreground_color ? `rgb(${bgColor(text.foreground_color)})`: '#000',
+    fontSize: text.font_size ? `${text.font_size}px` : 'inherit',
     fontStyle: text.italic ? 'italic' : 'normal',
     textDecoration: text.underline ? 'underline' : 'none',
-    fontSize: text.font_size ? `${text.font_size}px` : 'inherit',
-    fontFamily: text.font_family || 'Arial',
-    color: text.foreground_color
-      ? `rgb(${bgColor(text.foreground_color)})`
-      : '#000',
     textAlign: format.horizontal_alignment?.toLowerCase() || 'center',
     verticalAlign: format.vertical_alignment?.toLowerCase() || 'middle',
     border: '1px solid #ccc',
@@ -211,7 +208,6 @@ onMounted(async () => {
   border-radius: 10%;
   font-size: 1.2rem;
   font-weight: bold;
-  opacity: 0.7;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
@@ -239,6 +235,7 @@ onMounted(async () => {
 
 .sheet-preview td {
   border: 1px solid #cbd5e0;
+  height: 40px;
   padding: 0.4rem;
   overflow: hidden;
   text-overflow: ellipsis;
