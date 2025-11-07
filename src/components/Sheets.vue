@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="spreadsheet-btn">
-      <button @click="openCreateDialog" class="btn-create">+ Create New Spreadsheet</button>
+      <button v-if="!selectedSpreadsheet" @click="openCreateDialog" class="btn-create">+ Create New Spreadsheet</button>
 
       <button v-if="selectedSpreadsheet" @click="clearSelection" class="btn-clear"> Clear Selection</button>
     </div>

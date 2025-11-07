@@ -33,7 +33,12 @@
           </tr>
         </tbody>
       </table>
+      <div v-if="rows.length == 0">
+        <p>No Data inside Sheet Yet.</p>
+      </div>
     </div>
+
+
 
     <div v-if="error">{{ error }}</div>
   </div>
@@ -248,7 +253,7 @@ onMounted(async () => {
 
 .edit-btn {
   position: absolute;
-  top: 32%;
+  top: 30%;
   right: 9%;
 }
 </style>

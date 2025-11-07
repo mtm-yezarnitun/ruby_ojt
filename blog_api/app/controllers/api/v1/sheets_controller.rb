@@ -1,6 +1,7 @@
 module Api::V1
   class SheetsController < ApplicationController
     before_action :authenticate_user!
+    
     def index
       drive_service = current_user.google_drive_service
       return render json: { error: 'Google Drive not connected' }, status: :unauthorized if drive_service.nil?

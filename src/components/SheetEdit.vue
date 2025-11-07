@@ -20,6 +20,9 @@
             <th>
               -
             </th>
+            <th>
+              -
+            </th>
             <th v-for="(col, cIndex) in editableRows[0]" :key="'header-' + cIndex">
               <button @click="removeColumn(cIndex)" class="btn-remove">🗑️</button>
             </th>
@@ -27,9 +30,14 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(row, rIndex) in rows" :key="rIndex">
-            <td class="actions"> <button @click="removeRow(rIndex)" class="btn-remove">🗑️</button> </td>
-            <template v-for="(cell, cIndex) in (row.values || [])" :key="cIndex">
+          <tr v-for="(row, rIndex) in editableRows" :key="rIndex">
+]
+            <td class="actions">
+              <button @click="removeRow(rIndex)" class="btn-remove">🗑️</button> 
+            </td>
+
+            <template v-for="(cell, cIndex) in row" :key="cIndex">
+
               <td v-if="!isMergedCellHidden(rIndex, cIndex)" :rowspan="getMergeSpan(rIndex, cIndex).rowspan"
                 :colspan="getMergeSpan(rIndex, cIndex).colspan" :style="getCellStyle(cell.effective_format)">
                 <input v-model="editableRows[rIndex][cIndex]" :style="{
@@ -176,6 +184,9 @@ onMounted(async () => {
     editableRows.value = rows.value.map(r =>
       (r.values || []).map(c => c.formatted_value ?? '')
     )
+    if (editableRows.value.length === 0) editableRows.value = [['']]
+    if (editableRows.value[0].length === 0) editableRows.value[0] = ['']
+
   } catch (err) {
     console.error(err)
     error.value = "Failed to load sheet."
@@ -255,7 +266,7 @@ async function saveChanges() {
 }
 
 .btn-remove {
-  background: #f44336;
+  background: transparent;
   color: white;
   border: none;
   padding: 6px;
