@@ -58,7 +58,6 @@ const sheets = {
         commit('setLoading', false);
       }
     },
-
     async fetchSpreadsheet({ commit, rootGetters }, spreadsheetId) {
       commit('setLoading', true);
       commit('clearError');
@@ -111,6 +110,32 @@ const sheets = {
         throw err;
       }
     },
+    async createNewSpreadsheet({ rootGetters }, title) {
+      const token = rootGetters['auth/token'] || localStorage.getItem('token');
+      try {
+        const response = await axios.post(
+          `${API_URL}/api/v1/sheets/create_spreadsheet`,
+          { title },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return response.data;
+      } catch (err) {
+        console.error("Failed to create spreadsheet:", err);
+        throw err;
+      }
+    },
+    async deleteSpreadsheet({ rootGetters }, spreadsheetId) {
+      const token = rootGetters['auth/token'] || localStorage.getItem('token')
+      try {
+        const response = await axios.delete(`${API_URL}/api/v1/sheets/${spreadsheetId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        return response.data
+      } catch (err) {
+        console.error("Failed to delete spreadsheet:", err)
+        throw err
+      }
+    },  
     clearSelectedSheetData({ commit }) {
       commit('clearSelectedSheetData');
     },

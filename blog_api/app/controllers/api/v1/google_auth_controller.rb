@@ -52,7 +52,8 @@ class Api::V1::GoogleAuthController < ApplicationController
       "https://www.googleapis.com/auth/calendar",
       "https://www.googleapis.com/auth/calendar.events",
       "https://www.googleapis.com/auth/spreadsheets",
-      "https://www.googleapis.com/auth/drive.metadata.readonly"
+      "https://www.googleapis.com/auth/drive.metadata.readonly",
+      "https://www.googleapis.com/auth/drive"
     ]
 
     scope = scopes.join(" ")

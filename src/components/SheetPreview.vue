@@ -27,7 +27,7 @@
             <template v-for="(cell, cIndex) in (row.values || [])" :key="cIndex">
               <td v-if="!isMergedCellHidden(rIndex, cIndex)" :rowspan="getMergeSpan(rIndex, cIndex).rowspan"
                 :colspan="getMergeSpan(rIndex, cIndex).colspan" :style="getCellStyle(cell.effective_format)">
-                {{ getCellText(cell.user_entered_value) }}
+                {{ getCellText(cell.formatted_value) }}
               </td>
             </template>
           </tr>
@@ -61,7 +61,7 @@ const merges = computed(() => sheet.value?.merges || [])
 const rows = computed(() => {
   const rawRows = sheet.value?.data?.[0]?.row_data || []
   if (merges.value.length > 0) return rawRows
-  return rawRows.filter(row => row.values && row.values.some(cell => cell.user_entered_value))
+  return rawRows.filter(row => row.values && row.values.some(cell => cell.formatted_value))
 })
 
 function getMergeSpan(r, c) {
@@ -101,13 +101,10 @@ function isMergedCellHidden(r, c) {
   return false
 }
 
-function getCellText(userEnteredValue) {
-  if (!userEnteredValue) return ''
+function getCellText(formatted_value) {
+  if (!formatted_value) return ''
   return (
-    userEnteredValue.string_value ??
-    userEnteredValue.number_value ??
-    userEnteredValue.bool_value ??
-    ''
+    formatted_value ?? ''
   )
 }
 

@@ -1,19 +1,25 @@
 <template>
   <div class="edit-container">
     <h1>Edit {{ sheetName }}</h1>
+
     <span class="back-btn">
       <router-link :to="`/sheets`">Back</router-link>
     </span>
     <button @click="addRow" class="btn-add">+ Add Row</button>
     <button @click="addColumn" class="btn-add">+ Add Column</button>
+
     <div class="action-buttons">
       <button @click="saveChanges" class="btn-save">Save</button>
       <router-link :to="`/preview/${spreadsheetId}/${sheetName}`" class="btn-cancel">Cancel</router-link>
     </div>
+    
     <div class="table-wrapper">
       <table class="editable-table">
         <thead>
           <tr>
+            <th>
+              -
+            </th>
             <th v-for="(col, cIndex) in editableRows[0]" :key="'header-' + cIndex">
               <button @click="removeColumn(cIndex)" class="btn-remove">🗑️</button>
             </th>
@@ -168,7 +174,7 @@ onMounted(async () => {
     await store.dispatch('sheets/fetchSheetPreview', { spreadsheetId, sheetName })
     sheetData.value = store.getters['sheets/selectedSheetData']
     editableRows.value = rows.value.map(r =>
-      (r.values || []).map(c => c.user_entered_value?.string_value ?? '')
+      (r.values || []).map(c => c.formatted_value ?? '')
     )
   } catch (err) {
     console.error(err)

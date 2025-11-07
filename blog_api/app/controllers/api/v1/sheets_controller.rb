@@ -17,6 +17,7 @@ module Api::V1
             id: file.id,
             name: file.name,
             owner: file.owners&.first&.display_name,
+            email: file.owners&.first&.email_address,
             modified_at: file.modified_time,
             link: file.web_view_link
           }
@@ -29,6 +30,27 @@ module Api::V1
       rescue StandardError => e
         Rails.logger.error "Drive fetch error: #{e.message}"
         render json: { error: 'Failed to fetch spreadsheets.' }, status: :internal_server_error
+      end
+    end
+    
+    def create_spreadsheet
+      sheet_service = current_user.google_sheets_service
+      return render json: { error: 'Google Sheets not connected' }, status: :unauthorized if sheet_service.nil?
+
+      title = params[:title].presence || "Untitled Spreadsheet"
+
+      begin
+        spreadsheet = Google::Apis::SheetsV4::Spreadsheet.new(
+          properties: { title: title }
+        )
+
+        created_spreadsheet = sheet_service.create_spreadsheet(spreadsheet)
+        render json: { success: 'Spreadsheet created!', spreadsheet: created_spreadsheet }, status: :created
+      rescue Google::Apis::ClientError => e
+        render json: { error: e.message }, status: :bad_request
+      rescue StandardError => e
+        Rails.logger.error "Sheets create error: #{e.message}"
+        render json: { error: 'Failed to create spreadsheet.' }, status: :internal_server_error
       end
     end
 
@@ -76,7 +98,7 @@ module Api::V1
         spreadsheet = sheet_service.get_spreadsheet(
           spreadsheet_id,
           ranges: ["#{sheet_name}!A1:Z55"],
-          fields: 'sheets.data.rowData.values.userEnteredValue,sheets.data.rowData.values.effectiveFormat.backgroundColor,sheets.data.rowData.values.effectiveFormat.textFormat,sheets.merges'
+          fields: 'sheets.data.rowData.values.formattedValue,sheets.data.rowData.values.effectiveFormat.backgroundColor,sheets.data.rowData.values.effectiveFormat.textFormat,sheets.merges'
         )
         render json: { success: 'Fetched Successfully!', spreadsheet_title: spreadsheet_ttl, spreadsheet: spreadsheet, sheet_name: sheet_name}, status: :ok
       rescue Google::Apis::ClientError => e
@@ -109,6 +131,24 @@ module Api::V1
       rescue StandardError => e
         Rails.logger.error "Sheets update error: #{e.message}\n#{e.backtrace.join("\n")}"
         render json: { error: 'Failed to update sheet.' }, status: :internal_server_error
+      end
+    end
+
+    def destroy
+      drive_service = current_user.google_drive_service
+      return render json: { error: 'Google Drive not connected' }, status: :unauthorized if drive_service.nil?
+
+      spreadsheet_id = params[:id]
+
+      begin
+        drive_service.delete_file(spreadsheet_id)
+        render json: { success: 'Spreadsheet deleted successfully.' }, status: :ok
+      rescue Google::Apis::ClientError => e
+        Rails.logger.error "Drive API error: #{e.message}"
+        render json: { error: 'Spreadsheet not found or unauthorized.' }, status: :bad_request
+      rescue StandardError => e
+        Rails.logger.error "Sheets delete error: #{e.message}"
+        render json: { error: 'Failed to delete spreadsheet.' }, status: :internal_server_error
       end
     end
 

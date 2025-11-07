@@ -1,5 +1,29 @@
 <template>
   <div>
+    <div class="spreadsheet-btn">
+      <button @click="openCreateDialog" class="btn-create">+ Create New Spreadsheet</button>
+
+      <button v-if="selectedSpreadsheet" @click="clearSelection" class="btn-clear"> Clear Selection</button>
+    </div>
+    
+    <div v-if="creating" class="modal-overlay">
+      <div class="modal-box">
+        <h3>Create New Spreadsheet</h3>
+
+        <input
+          v-model="newTitle"
+          type="text"
+          placeholder="Enter spreadsheet name"
+          class="modal-input"
+          @keyup.enter="createSpreadsheet"
+        />
+        <div class="modal-actions">
+          <button @click="createSpreadsheet" class="btn-primary">Create</button>
+          <button @click="cancelCreate" class="btn-secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="selectedSpreadsheet" class="selected-sheet">
       <h2 class="spreadsheet-title">{{ selectedSpreadsheet.spreadsheet_title }}</h2>
 
@@ -14,6 +38,13 @@
       <div v-for="sheet in spreadsheets" :key="sheet.id" class="sheet-card" @click="selectSpreadsheet(sheet.id)">
         <h3 class="sheet-name">{{ sheet.name }}</h3>
         <p class="sheet-owner">Owner: {{ sheet.owner }}</p>
+        <button
+          v-if="sheet.email === currentUser.email"
+          class="btn-delete"
+          @click="deleteSpreadsheet(sheet)"
+        >
+        🗑️ Delete
+      </button>
       </div>
     </div>
 
@@ -29,7 +60,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { ref,computed, onMounted } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 
@@ -40,7 +71,11 @@ const spreadsheets = computed(() => store.getters['sheets/spreadsheets'])
 const selectedSpreadsheet = computed(() => store.getters['sheets/selectedSpreadsheet'])
 const loading = computed(() => store.getters['sheets/loading'])
 const error = computed(() => store.getters['sheets/error'])
-const selectedSheetData = computed(() => store.getters['sheets/selectedSheetData']);
+const creating = ref(false)
+const deleting = ref(false)
+const newTitle = ref('')
+
+const currentUser = computed(() => store.getters['auth/user'])
 
 const selectSpreadsheet = (id) => {
   store.dispatch('sheets/clearSelectedSpreadsheet');
@@ -53,8 +88,54 @@ const selectSheet = (sheetName) => {
   router.push({ path: `/preview/${spreadsheetId}/${sheetName}` })
 }
 
+function openCreateDialog() {
+  creating.value = true
+}
+
+function cancelCreate() {
+  creating.value = false
+  newTitle.value = ''
+}
+
+function clearSelection() {
+  store.dispatch('sheets/clearSelectedSpreadsheet');
+  store.dispatch('sheets/fetchSpreadsheets')
+}
+
+async function createSpreadsheet() {
+  if (!newTitle.value.trim()) {
+    window.$toast.error("Please enter a spreadsheet name!")
+    return
+  }
+
+  try {
+    const res = await store.dispatch('sheets/createNewSpreadsheet', newTitle.value)
+    window.$toast.success(`Spreadsheet "${res.spreadsheet.properties.title}" created!`)
+    creating.value = false
+    newTitle.value = ''
+    store.dispatch('sheets/fetchSpreadsheets')
+  } catch (err) {
+    console.error(err)
+    window.$toast.error("Failed to create spreadsheet.")
+  }
+}
+
+async function deleteSpreadsheet(sheet) {
+  if (!confirm(`Are you sure you want to delete "${sheet.name}"?`)) return
+
+  try {
+    await store.dispatch('sheets/deleteSpreadsheet', sheet.id)
+    window.$toast.success("Spreadsheet deleted successfully!")
+    await store.dispatch('sheets/fetchSpreadsheets')
+  } catch (err) {
+    console.error(err)
+    window.$toast.error("Failed to delete spreadsheet.")
+  }
+}
+
 onMounted(() => {
   store.dispatch('sheets/fetchSpreadsheets')
+  store.dispatch('sheets/clearSelectedSpreadsheet');
 })
 </script>
 
@@ -63,6 +144,54 @@ onMounted(() => {
   font-size: 1.8rem;
   margin-bottom: 1rem;
   font-weight: bold;
+}
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-box {
+  background: #555;
+  border-radius: 12px;
+  padding: 24px;
+  width: 400px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  text-align: center;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.modal-box h3 {
+  margin-bottom: 16px;
+}
+
+.modal-input {
+  width: 80%;
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.btn-create {
+  background: #0b8043;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 10px;
 }
 
 .spreadsheets-grid {
@@ -77,8 +206,9 @@ onMounted(() => {
 
 .spreadsheet-title {
   font-size: 2rem;
+  padding-bottom: 2rem;
   font-weight: bold;
-  margin-bottom: 1rem;
+  margin: 0 auto;
 }
 .spinner {
   border: 3px solid #f3f3f3;
@@ -106,6 +236,22 @@ onMounted(() => {
     flex-wrap: wrap;
     gap: 0.5rem;
     margin: 0 auto;
+}
+
+.spreadsheet-btn {
+  position: relative;
+}
+
+.btn-create {
+  position: absolute;
+  left: 0%;
+  top: -70px;
+}
+
+.btn-clear {
+  position: absolute;
+  right: 0%;
+  top: -70px;
 }
 
 .loading-modal {
