@@ -97,6 +97,20 @@ const sheets = {
         commit('setLoading', false);
       }
     },
+    async updateSheet({ rootGetters }, { spreadsheetId, sheetName, updates }) {
+      const token = rootGetters['auth/token'] || localStorage.getItem('token');
+      try {
+        const response = await axios.put(
+          `${API_URL}/api/v1/sheets/${spreadsheetId}/sheet/${sheetName}/update`,
+          { updates },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return response.data;
+      } catch (err) {
+        console.error("Failed to update sheet:", err);
+        throw err;
+      }
+    },
     clearSelectedSheetData({ commit }) {
       commit('clearSelectedSheetData');
     },

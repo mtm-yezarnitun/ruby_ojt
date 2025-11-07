@@ -9,6 +9,9 @@
       <router-link :to="`/sheets`">Back</router-link>
     </span>
 
+    <span class="edit-btn">
+      <router-link :to="`/sheets/${spreadsheetId}/sheet/${sheetName}/edit`" class="edit-btn"> Edit</router-link>
+    </span>
 
     <div v-if="loading" class="loading-modal">
       <div class="loading-box">
@@ -22,12 +25,8 @@
         <tbody>
           <tr v-for="(row, rIndex) in rows" :key="rIndex">
             <template v-for="(cell, cIndex) in (row.values || [])" :key="cIndex">
-              <td
-                v-if="!isMergedCellHidden(rIndex, cIndex)"
-                :rowspan="getMergeSpan(rIndex, cIndex).rowspan"
-                :colspan="getMergeSpan(rIndex, cIndex).colspan"
-                :style="getCellStyle(cell.effective_format)"
-              >
+              <td v-if="!isMergedCellHidden(rIndex, cIndex)" :rowspan="getMergeSpan(rIndex, cIndex).rowspan"
+                :colspan="getMergeSpan(rIndex, cIndex).colspan" :style="getCellStyle(cell.effective_format)">
                 {{ getCellText(cell.user_entered_value) }}
               </td>
             </template>
@@ -35,8 +34,6 @@
         </tbody>
       </table>
     </div>
-
-    
 
     <div v-if="error">{{ error }}</div>
   </div>
@@ -57,7 +54,6 @@ const sheetData = ref(null)
 const loading = ref(true)
 const error = ref(null)
 
-// got both rows(data) and merges 
 const sheet = computed(() => sheetData.value?.spreadsheet?.sheets?.[0])
 
 const merges = computed(() => sheet.value?.merges || [])
@@ -70,8 +66,8 @@ const rows = computed(() => {
 
 function getMergeSpan(r, c) {
   for (const merge of merges.value) {
-    const rowStart = merge.start_row_index  ?? 0
-    const rowEnd = merge.end_row_index  ?? 0
+    const rowStart = merge.start_row_index ?? 0
+    const rowEnd = merge.end_row_index ?? 0
     const colStart = merge.start_column_index ?? 0
     const colEnd = merge.end_column_index ?? 0
 
@@ -136,7 +132,7 @@ function getCellStyle(format) {
     backgroundColor: bg,
     fontWeight: text.bold ? 'bold' : 'normal',
     fontFamily: text.font_family || 'Arial',
-    color: text.foreground_color ? `rgb(${bgColor(text.foreground_color)})`: '#000',
+    color: text.foreground_color ? `rgb(${bgColor(text.foreground_color)})` : '#000',
     fontSize: text.font_size ? `${text.font_size}px` : 'inherit',
     fontStyle: text.italic ? 'italic' : 'normal',
     textDecoration: text.underline ? 'underline' : 'none',
@@ -174,6 +170,7 @@ onMounted(async () => {
 .sheet-name {
   margin-bottom: 0.7rem;
 }
+
 .spinner {
   border: 3px solid #f3f3f3;
   border-top: 3px solid #43e192;
@@ -185,8 +182,13 @@ onMounted(async () => {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-modal {
@@ -245,5 +247,11 @@ onMounted(async () => {
   position: absolute;
   top: 32%;
   left: 9%;
+}
+
+.edit-btn {
+  position: absolute;
+  top: 32%;
+  right: 9%;
 }
 </style>

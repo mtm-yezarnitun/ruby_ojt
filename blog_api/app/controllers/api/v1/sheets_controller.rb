@@ -75,7 +75,7 @@ module Api::V1
 
         spreadsheet = sheet_service.get_spreadsheet(
           spreadsheet_id,
-          ranges: ["#{sheet_name}!A1:Z100"],
+          ranges: ["#{sheet_name}!A1:Z55"],
           fields: 'sheets.data.rowData.values.userEnteredValue,sheets.data.rowData.values.effectiveFormat.backgroundColor,sheets.data.rowData.values.effectiveFormat.textFormat,sheets.merges'
         )
         render json: { success: 'Fetched Successfully!', spreadsheet_title: spreadsheet_ttl, spreadsheet: spreadsheet, sheet_name: sheet_name}, status: :ok
@@ -87,5 +87,31 @@ module Api::V1
         render json: { error: 'Failed to load sheet preview.' }, status: :internal_server_error
       end
     end
+
+    def update
+      sheet_service = current_user.google_sheets_service
+      return render json: { error: 'Google Sheets not connected' }, status: :unauthorized if sheet_service.nil?
+
+      spreadsheet_id = params[:id]
+      sheet_name = params[:sheet_name]
+      updates = params[:updates] 
+
+      begin
+        body = Google::Apis::SheetsV4::BatchUpdateValuesRequest.new(
+          data: updates,
+          value_input_option: 'USER_ENTERED'
+        )
+
+        response = sheet_service.batch_update_values(spreadsheet_id, body)
+        render json: { success: 'Sheet updated successfully', response: response }, status: :ok
+      rescue Google::Apis::ClientError => e
+        render json: { error: 'Invalid sheet or range.' }, status: :bad_request
+      rescue StandardError => e
+        Rails.logger.error "Sheets update error: #{e.message}\n#{e.backtrace.join("\n")}"
+        Rails.logger.error "Sheets update error: #{e.message}"
+        render json: { error: 'Failed to update sheet.' }, status: :internal_server_error
+      end
+    end
+
   end
 end
