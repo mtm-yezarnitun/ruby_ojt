@@ -4,16 +4,25 @@
     <span class="back-btn">
       <router-link :to="`/sheets`">Back</router-link>
     </span>
-
+    <button @click="addRow" class="btn-add">+ Add Row</button>
+    <button @click="addColumn" class="btn-add">+ Add Column</button>
     <div class="action-buttons">
       <button @click="saveChanges" class="btn-save">Save</button>
       <router-link :to="`/preview/${spreadsheetId}/${sheetName}`" class="btn-cancel">Cancel</router-link>
     </div>
     <div class="table-wrapper">
       <table class="editable-table">
-
+        <thead>
+          <tr>
+            <th v-for="(col, cIndex) in editableRows[0]" :key="'header-' + cIndex">
+              <button @click="removeColumn(cIndex)" class="btn-remove">🗑️</button>
+            </th>
+            <th class="actions"></th> 
+          </tr>
+        </thead>
         <tbody>
           <tr v-for="(row, rIndex) in rows" :key="rIndex">
+            <td class="actions"> <button @click="removeRow(rIndex)" class="btn-remove">🗑️</button> </td>
             <template v-for="(cell, cIndex) in (row.values || [])" :key="cIndex">
               <td v-if="!isMergedCellHidden(rIndex, cIndex)" :rowspan="getMergeSpan(rIndex, cIndex).rowspan"
                 :colspan="getMergeSpan(rIndex, cIndex).colspan" :style="getCellStyle(cell.effective_format)">
@@ -117,6 +126,40 @@ function getCellStyle(format) {
     padding: '4px 8px',
     minWidth: '80px',
   }
+}
+
+function addRow() {
+  const columns = editableRows.value[0]?.length || 1
+  editableRows.value.push(Array(columns).fill(''))
+  rows.value.push({ values: Array(columns).fill({}) })
+}
+
+function addColumn() {
+  editableRows.value.forEach(row => {
+    row.push('')
+  })
+  rows.value.forEach(r => {
+    if (!r.values) r.values = []
+    r.values.push({})
+  })
+}
+
+function removeRow(index) {
+  editableRows.value.splice(index, 1)
+  rows.value.splice(index, 1)
+}
+
+function removeColumn(index) {
+  editableRows.value.forEach(row => {
+    if (row.length > index) {
+      row.splice(index, 1)
+    }
+  })
+  rows.value.forEach(r => {
+    if (r.values && r.values.length > index) {
+      r.values.splice(index, 1)
+    }
+  })
 }
 
 onMounted(async () => {
@@ -308,3 +351,4 @@ async function saveChanges() {
   background: #757575;
 }
 </style>
+

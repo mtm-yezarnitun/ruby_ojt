@@ -108,7 +108,6 @@ module Api::V1
         render json: { error: 'Invalid sheet or range.' }, status: :bad_request
       rescue StandardError => e
         Rails.logger.error "Sheets update error: #{e.message}\n#{e.backtrace.join("\n")}"
-        Rails.logger.error "Sheets update error: #{e.message}"
         render json: { error: 'Failed to update sheet.' }, status: :internal_server_error
       end
     end
