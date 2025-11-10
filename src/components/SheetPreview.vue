@@ -274,7 +274,8 @@ async function duplicateSheetAction() {
       sheetId: sheet.value.properties.sheet_id,
       newTitle: duplicateTitle.value
     })
-    await store.dispatch('sheets/fetchSpreadsheet', spreadsheetId)
+
+    store.dispatch('sheets/fetchSpreadsheet', (spreadsheetId) )
     window.$toast.success(`Sheet duplicated as "${duplicateTitle.value}"`)
     router.push({ path: `/sheets` })
   } catch (err) {
