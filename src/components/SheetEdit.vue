@@ -1,10 +1,6 @@
 <template>
   <div class="edit-container">
     <h1>Edit {{ sheetName }}</h1>
-
-    <span class="back-btn">
-      <router-link :to="`/sheets`">Back</router-link>
-    </span>
     <button @click="addRow" class="btn-add">+ Add Row</button>
     <button @click="addColumn" class="btn-add">+ Add Column</button>
 
@@ -39,19 +35,13 @@
             <template v-for="(cell, cIndex) in row" :key="cIndex">
 
               <td v-if="!isMergedCellHidden(rIndex, cIndex)" :rowspan="getMergeSpan(rIndex, cIndex).rowspan"
-                :colspan="getMergeSpan(rIndex, cIndex).colspan" :style="getCellStyle(cell.effective_format)">
+                :colspan="getMergeSpan(rIndex, cIndex).colspan">
                 <input v-model="editableRows[rIndex][cIndex]" :style="{
                   width: '100%',
                   border: 'none',
                   background: 'transparent',
-                  fontWeight: getCellStyle(cell.effective_format).fontWeight,
-                  fontFamily: getCellStyle(cell.effective_format).fontFamily,
                   color: 'black',
                   fontSize: '10px',
-                  fontStyle: getCellStyle(cell.effective_format).fontStyle,
-                  textDecoration: getCellStyle(cell.effective_format).textDecoration,
-                  textAlign: getCellStyle(cell.effective_format).textAlign,
-                  verticalAlign: getCellStyle(cell.effective_format).verticalAlign
                 }" />
               </td>
             </template>
@@ -114,33 +104,6 @@ function isMergedCellHidden(r, c) {
   return false
 }
 
-function bgColor(color) {
-  if (!color) return '255,255,255'
-  const r = Math.round((color.red ?? 0) * 255)
-  const g = Math.round((color.green ?? 0) * 255)
-  const b = Math.round((color.blue ?? 0) * 255)
-  return `${r},${g},${b}`
-}
-
-function getCellStyle(format) {
-  if (!format) return {}
-  const bg = format.background_color ? `rgb(${bgColor(format.background_color)})` : 'white'
-  const text = format.text_format || {}
-  return {
-    backgroundColor: bg,
-    fontWeight: text.bold ? 'bold' : 'normal',
-    fontFamily: text.font_family || 'Arial',
-    color: text.foreground_color ? `rgb(${bgColor(text.foreground_color)})` : '#000',
-    fontSize: text.font_size ? `${text.font_size}px` : 'inherit',
-    fontStyle: text.italic ? 'italic' : 'normal',
-    textDecoration: text.underline ? 'underline' : 'none',
-    textAlign: format.horizontal_alignment?.toLowerCase() || 'center',
-    verticalAlign: format.vertical_alignment?.toLowerCase() || 'middle',
-    border: '1px solid #ccc',
-    padding: '4px 8px',
-    minWidth: '80px',
-  }
-}
 
 function addRow() {
   const columns = editableRows.value[0]?.length || 1

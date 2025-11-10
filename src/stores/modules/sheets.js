@@ -110,6 +110,20 @@ const sheets = {
         throw err;
       }
     },
+    async addNewSheet({ rootGetters }, { spreadsheetId, title }) {
+      const token = rootGetters['auth/token'] || localStorage.getItem('token');
+      try {
+        const response = await axios.post(
+          `${API_URL}/api/v1/sheets/${spreadsheetId}/add_sheet`,
+          { title },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return response.data;
+      } catch (err) {
+        console.error("Failed to add new sheet:", err);
+        throw err;
+      }
+    },
     async createNewSpreadsheet({ rootGetters }, title) {
       const token = rootGetters['auth/token'] || localStorage.getItem('token');
       try {

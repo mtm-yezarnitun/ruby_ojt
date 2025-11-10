@@ -4,6 +4,8 @@
       <button v-if="!selectedSpreadsheet" @click="openCreateDialog" class="btn-create">+ Create New Spreadsheet</button>
 
       <button v-if="selectedSpreadsheet" @click="clearSelection" class="btn-clear"> Clear Selection</button>
+
+      <button v-if="selectedSpreadsheet" :disabled="!selectedSpreadsheet"  @click="openAddDialog" class="btn-create">+ Add New Sheet</button>
     </div>
     
     <div v-if="creating" class="modal-overlay">
@@ -24,9 +26,30 @@
       </div>
     </div>
 
+    <div v-if="adding" class="modal-overlay">
+      <div class="modal-box">
+        <h3>Create New Sheet</h3>
+        <input
+          v-model="newSheet"
+          type="text"
+          placeholder="Enter Sheet name"
+          class="modal-input"
+          @keyup.enter="addNewSheet"
+        />
+        <div class="modal-actions">
+          <button @click="addNewSheet" class="btn-primary">Add</button>
+          <button @click="cancelAdd" class="btn-secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="selectedSpreadsheet" class="selected-sheet">
       <h2 class="spreadsheet-title">{{ selectedSpreadsheet.spreadsheet_title }}</h2>
-
+      <p v-if="selectedSpreadsheet.link" class="sheet-link">
+        <a :href="selectedSpreadsheet.link" target="_blank" rel="noopener noreferrer">
+            Open in Google Sheets
+        </a>
+      </p>
       <ul class="sheet-tabs">
         <li v-for="s in selectedSpreadsheet.sheets" :key="s.sheet_id" class="sheet-tab" @click="selectSheet(s.title)">
           {{ s.title }}
@@ -41,10 +64,21 @@
         <button
           v-if="sheet.email === currentUser.email"
           class="btn-delete"
-          @click="deleteSpreadsheet(sheet)"
+          @click.stop="confirmDelete(sheet)"
         >
         🗑️ Delete
       </button>
+      </div>
+    </div>
+
+    <div v-if="deleting" class="modal-overlay">
+      <div class="modal-box">
+        <h3>Confirm Delete</h3>
+        <p>Are you sure you want to delete "{{ deleting.name }}"?</p>
+        <div class="modal-actions">
+          <button @click="deleteSpreadsheet(deleting)" class="btn-primary">Delete</button>
+          <button @click="cancelDelete" class="btn-secondary">Cancel</button>
+        </div>
       </div>
     </div>
 
@@ -72,8 +106,10 @@ const selectedSpreadsheet = computed(() => store.getters['sheets/selectedSpreads
 const loading = computed(() => store.getters['sheets/loading'])
 const error = computed(() => store.getters['sheets/error'])
 const creating = ref(false)
-const deleting = ref(false)
 const newTitle = ref('')
+const adding = ref(false)
+const newSheet = ref('')
+const deleting = ref(null)
 
 const currentUser = computed(() => store.getters['auth/user'])
 
@@ -90,6 +126,15 @@ const selectSheet = (sheetName) => {
 
 function openCreateDialog() {
   creating.value = true
+}
+
+function openAddDialog() {
+  adding.value = true
+}
+
+function cancelAdd() {
+  adding.value = false
+  newSheet.value = ''
 }
 
 function cancelCreate() {
@@ -120,16 +165,41 @@ async function createSpreadsheet() {
   }
 }
 
-async function deleteSpreadsheet(sheet) {
-  if (!confirm(`Are you sure you want to delete "${sheet.name}"?`)) return
+function confirmDelete(sheet) {
+  deleting.value = sheet
+}
 
+function cancelDelete() {
+  deleting.value = null
+}
+
+async function deleteSpreadsheet(sheet) {
   try {
     await store.dispatch('sheets/deleteSpreadsheet', sheet.id)
     window.$toast.success("Spreadsheet deleted successfully!")
+    deleting.value = null;
     await store.dispatch('sheets/fetchSpreadsheets')
   } catch (err) {
     console.error(err)
     window.$toast.error("Failed to delete spreadsheet.")
+  }
+}
+
+async function addNewSheet() {
+  if (!newSheet.value.trim()) {
+    window.$toast.error("Please enter a sheet name!")
+    return
+  }
+  try {
+    await store.dispatch('sheets/addNewSheet', { spreadsheetId: selectedSpreadsheet.value.id, title: newSheet.value });
+    window.$toast.success(`Sheet added successfully!`)
+    adding.value = false
+    newSheet.value = ''
+    store.dispatch('sheets/fetchSpreadsheets');
+    selectSpreadsheet(selectedSpreadsheet.value.id);
+  } catch (err) {
+    console.error(err)
+    window.$toast.error("Failed to add sheet.")
   }
 }
 
@@ -153,6 +223,11 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   z-index: 1000;
+}
+
+.sheet-link a{
+  padding: 0;
+  margin: 0 auto;
 }
 
 .modal-box {
@@ -196,6 +271,7 @@ onMounted(() => {
 
 .spreadsheets-grid {
   display: flex;
+  min-width: 1216px;
   flex-wrap: wrap;
   gap: 1rem;
 }
@@ -206,7 +282,6 @@ onMounted(() => {
 
 .spreadsheet-title {
   font-size: 2rem;
-  padding-bottom: 2rem;
   font-weight: bold;
   margin: 0 auto;
 }

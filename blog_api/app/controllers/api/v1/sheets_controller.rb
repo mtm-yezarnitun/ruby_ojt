@@ -54,7 +54,7 @@ module Api::V1
         render json: { error: 'Failed to create spreadsheet.' }, status: :internal_server_error
       end
     end
-
+    
     def show
       sheet_service = current_user.google_sheets_service
       return render json: { error: 'Google Sheets not connected' }, status: :unauthorized if sheet_service.nil?
@@ -74,7 +74,8 @@ module Api::V1
           success: 'Fetched Successfully!',
           id: spreadsheet_id,
           spreadsheet_title: spreadsheet.properties.title,
-          sheets: sheets
+          sheets: sheets,
+          link: spreadsheet.spreadsheet_url 
         }, status: :ok
 
       rescue Google::Apis::ClientError => e
@@ -83,6 +84,31 @@ module Api::V1
         Rails.logger.error "Sheets error: #{e.message}"
         render json: { error: 'Failed to load sheet data.' }, status: :internal_server_error
       end
+    end
+
+    def add_new_sheet
+      spreadsheet_id = params[:id]  
+      sheet_title = params.dig(:sheet, :title) || params[:title]
+
+      if sheet_title.blank?
+        return render json: { success: false, error: "Sheet title cannot be blank" }, status: :bad_request
+      end
+
+      service = current_user.google_sheets_service
+      
+      request = Google::Apis::SheetsV4::BatchUpdateSpreadsheetRequest.new(
+        requests: [
+          { add_sheet: { properties: { title: sheet_title } } }
+        ]
+      )
+
+      service.batch_update_spreadsheet(spreadsheet_id, request)
+
+      render json: { success: true, sheet_title: sheet_title }
+    rescue Google::Apis::ClientError => e
+      render json: { success: false, error: e.message }, status: :bad_request
+    rescue => e
+      render json: { success: false, error: e.message }, status: :internal_server_error
     end
 
     def preview

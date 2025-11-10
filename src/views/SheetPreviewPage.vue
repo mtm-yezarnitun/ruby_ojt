@@ -11,6 +11,7 @@ import SheetPreview from '../components/SheetPreview.vue'
 
 <style scoped>
 .container {  
+  min-width: 1216px;
   display: flex;
   flex-direction: column;
   align-items: center;
