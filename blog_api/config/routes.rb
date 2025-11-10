@@ -40,7 +40,9 @@ Rails.application.routes.draw do
         member do
           get 'sheet/:sheet_name/preview', to: 'sheets#preview'
           put 'sheet/:sheet_name/update', to: 'sheets#update'
+          put 'rename_sheet', to:'sheets#rename_sheet'
           post 'add_sheet', to: 'sheets#add_new_sheet' 
+          post 'duplicate_sheet', to: 'sheets#duplicate_sheet'
           delete 'delete_sheet', to: 'sheets#delete_sheet' 
         end
       end

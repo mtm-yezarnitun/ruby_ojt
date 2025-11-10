@@ -111,6 +111,22 @@ const sheets = {
         throw err;
       }
     },
+    async renameSheet({ rootGetters }, { spreadsheetId, sheetId, newTitle }) {
+      const token = rootGetters['auth/token'] || localStorage.getItem('token');
+      if (!token) throw new Error("No authentication token found");
+
+      try {
+        const response = await axios.put(
+          `${API_URL}/api/v1/sheets/${spreadsheetId}/rename_sheet`,
+          { sheet_id: sheetId, new_title: newTitle },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return response.data;
+      } catch (err) {
+        console.error("Failed to rename sheet:", err);
+        throw err;
+      }
+    },
     async addNewSheet({ rootGetters }, { spreadsheetId, title }) {
       const token = rootGetters['auth/token'] || localStorage.getItem('token');
       if (!token) throw new Error("No authentication token found");
@@ -153,6 +169,22 @@ const sheets = {
         return response.data;
       } catch (err) {
         console.error("Failed to create spreadsheet:", err);
+        throw err;
+      }
+    },
+    async duplicateSheet({ rootGetters }, { spreadsheetId, sheetId, newTitle }) {
+      const token = rootGetters['auth/token'] || localStorage.getItem('token');
+      if (!token) throw new Error("No authentication token found");
+
+      try {
+        const response = await axios.post(
+          `${API_URL}/api/v1/sheets/${spreadsheetId}/duplicate_sheet`,
+          { sheet_id: sheetId, new_title: newTitle },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return response.data;
+      } catch (err) {
+        console.error("Failed to duplicate sheet:", err);
         throw err;
       }
     },

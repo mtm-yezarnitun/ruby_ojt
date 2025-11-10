@@ -205,7 +205,9 @@ async function addNewSheet() {
 }
 
 onMounted(() => {
-  store.dispatch('sheets/fetchSpreadsheets')
+  store.dispatch('sheets/fetchSpreadsheets') 
+  store.dispatch('sheets/clearSelectedSpreadsheet');
+  store.dispatch('sheets/clearSelectedSheetData');
 })
 </script>
 
@@ -278,6 +280,9 @@ onMounted(() => {
 
 .selected-sheet {
   padding: 1rem;
+  border: 3px solid #555;
+  border-radius: 5px;
+  margin-bottom: 10px;
 }
 
 .spreadsheet-title {

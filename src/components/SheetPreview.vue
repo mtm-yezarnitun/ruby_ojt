@@ -13,6 +13,14 @@
       <router-link :to="`/sheets/${spreadsheetId}/sheet/${sheetName}/edit`" class="edit-btn"> Edit</router-link>
     </span>
 
+    <span class="rename-btn" v-if="isOwner">
+        <button
+          class="btn-rename"
+          @click="renameBox()"  
+        >Rename
+      </button>
+    </span>
+
     <span class="del-btn" v-if="isOwner">
         <button
           class="btn-delete"
@@ -20,6 +28,28 @@
         >Delete
       </button>
     </span>
+
+    <div v-if="renaming" class="rename-modal">
+      <div class="rename-box">
+        <p>Enter your new Title:</p>
+        <input type="text" v-model="newTtl" placeholder="New sheet title" />
+        <button @click="renameSheet" class="rnm-btn">Save</button>
+        <button @click="renaming = false" class="rnm-btn">Cancel</button>
+      </div>
+    </div>
+
+    <span class="copy-btn" v-if="isOwner">
+      <button class="btn-copy" @click="duplicateBox()">Duplicate</button>
+    </span>
+
+    <div v-if="duplicating" class="duplicate-modal">
+      <div class="duplicate-box">
+        <p>Enter a name for the duplicated sheet:</p>
+        <input type="text" v-model="duplicateTitle" placeholder="New sheet title" />
+        <button @click="duplicateSheetAction" class="dup-btn">Duplicate</button>
+        <button @click="duplicating = false" class="dup-btn">Cancel</button>
+      </div>
+    </div>
 
     <div v-if="loading" class="loading-modal">
       <div class="loading-box">
@@ -59,18 +89,21 @@ const router = useRouter()
 const route = useRoute()
 
 const spreadsheetId = route.params.spreadsheetId
-const sheetName = route.params.sheetName
+const sheetName = ref(route.params.sheetName)
 
 const sheetData = ref(null)
 const loading = ref(true)
 const error = ref(null)
 const deleting = ref(null)
+const renaming = ref(null)
+const newTtl = ref()
+const duplicating = ref()
+const duplicateTitle = ref('')
 
 const currentUser = computed(() => store.getters['auth/user'])
 const sheet = computed(() => sheetData.value?.spreadsheet?.sheets?.[0])
 
 const merges = computed(() => sheet.value?.merges || [])
-
 const isOwner = computed(() => {
   return sheetData.value?.owner === currentUser.value?.email
 })
@@ -162,7 +195,7 @@ async function deleteSheet() {
   await store.dispatch('sheets/fetchSpreadsheet', spreadsheetId);
   const spreadsheet = store.getters['sheets/selectedSpreadsheet'];
   const allSheets = spreadsheet?.sheets || [];
-  const currentSheet = allSheets.find(s => s.title === sheetName);
+  const currentSheet = allSheets.find(s => s.title === sheetName.value);
 
   if (!currentSheet)
   return window.$toast.error(`Cannot Delete Sheet! Sheet Doesn't Exists.`);
@@ -170,7 +203,6 @@ async function deleteSheet() {
   if (allSheets.length <= 1) {
     return window.$toast.error('Cannot delete the last sheet in spreadsheet!');
   }
-  console.log(allSheets.length)
 
   try {
     loading.value = true;
@@ -190,17 +222,77 @@ async function deleteSheet() {
   }
 }
 
-onMounted(async () => {
+function renameBox() {
+  renaming.value = true
+  newTtl.value = sheet.value?.properties?.title || ''
+}
+
+async function renameSheet() {
+  if (!newTtl.value || newTtl.value === sheet.value?.properties?.title) {
+    window.$toast.error("Please enter a new sheet title")
+    return
+  }
+
   try {
     loading.value = true
-    error.value = null
+    renaming.value = false
+    await store.dispatch('sheets/renameSheet', {
+      spreadsheetId,
+      sheetId: sheet.value.properties.sheet_id,
+      newTitle: newTtl.value
+    })
+    sheetName.value = newTtl.value
+    await store.dispatch('sheets/fetchSheetPreview', { spreadsheetId, sheetName: newTtl.value })
+    window.$toast.success(`Sheet renamed to "${newTtl.value}"`)
+    router.push({ path: `/preview/${spreadsheetId}/${newTtl.value}` })
 
+  } catch (err) {
+    console.error(err)
+    window.$toast.error('Failed to rename sheet.')
+  } finally {
+    loading.value = false
+    newTtl.value = null
+  }
+}
+
+function duplicateBox() {
+  duplicating.value = true
+  duplicateTitle.value = sheet.value?.properties?.title + " Copy" || ''
+}
+
+async function duplicateSheetAction() {
+  if (!duplicateTitle.value) {
+    return window.$toast.error("Please enter a title for the duplicated sheet")
+  }
+
+  try {
+    loading.value = true
+    duplicating.value = false
+
+    await store.dispatch('sheets/duplicateSheet', {
+      spreadsheetId,
+      sheetId: sheet.value.properties.sheet_id,
+      newTitle: duplicateTitle.value
+    })
+    await store.dispatch('sheets/fetchSpreadsheet', spreadsheetId)
+    window.$toast.success(`Sheet duplicated as "${duplicateTitle.value}"`)
+    router.push({ path: `/sheets` })
+  } catch (err) {
+    console.error(err)
+    window.$toast.error('Failed to duplicate sheet.')
+  } finally {
+    loading.value = false
+    duplicateTitle.value = ''
+  }
+}
+
+onMounted(async () => {
+  try {
+    const sheetName = route.params.sheetName
+    loading.value = true
+    error.value = null
     await store.dispatch('sheets/fetchSheetPreview', { spreadsheetId, sheetName })
     sheetData.value = store.getters['sheets/selectedSheetData']
-
-    console.log('sheetData:', sheetData.value)
-    console.log('sheet:', sheet.value)
-    console.log(sheet.value?.properties?.sheet_id)
 
   } catch (e) {
     error.value = 'Failed to load sheet preview.'
@@ -240,6 +332,72 @@ onMounted(async () => {
   100% {
     transform: rotate(360deg);
   }
+}
+
+.duplicate-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.duplicate-box {
+  display: flex;
+  flex-direction: column;
+  background-color: rgb(109, 109, 109);
+  padding: 1rem 3rem;
+  border-radius: 10px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.duplicate-box input {
+  padding: 10px;
+  border-radius: 5px;
+  font-family:monospace;
+}
+
+.dup-btn {
+  padding: 5px;
+}
+
+.rename-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.rename-box {
+  display: flex;
+  flex-direction: column;
+  background-color: rgb(109, 109, 109);
+  padding: 1rem 3rem;
+  border-radius: 10px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.rename-box input {
+  padding: 10px;
+  border-radius: 5px;
+  font-family:monospace;
+}
+
+.rnm-btn {
+  padding: 5px;
 }
 
 .loading-modal {

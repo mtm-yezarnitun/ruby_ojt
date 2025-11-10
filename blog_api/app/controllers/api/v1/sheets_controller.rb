@@ -110,6 +110,33 @@ module Api::V1
       render json: { success: false, error: e.message }, status: :internal_server_error
     end
 
+    def duplicate_sheet
+      spreadsheet_id = params[:id]
+      sheet_id = params[:sheet_id]
+      new_title = params[:new_title]
+
+      service = current_user.google_sheets_service 
+      spreadsheet = service.get_spreadsheet(spreadsheet_id)
+      sheet = spreadsheet.sheets.find { |s| s.properties.sheet_id == sheet_id.to_i }
+      if(!sheet)
+        return render json: { success: false, error: "Sheet cannot be found" }, status: :bad_request
+      end
+      
+      requests = [
+        {
+          duplicate_sheet: {
+            source_sheet_id: sheet_id.to_i,
+            new_sheet_name: new_title
+          }
+        }
+      ]
+
+      result =  service.batch_update_spreadsheet(spreadsheet_id, { requests: requests })
+      render json: result
+      rescue => e
+        render json: { error: e.message }, status: :unprocessable_entity
+    end
+
     def preview
       drive_service = current_user.google_drive_service
       return render json: { error: 'Google Drive not connected' }, status: :unauthorized if drive_service.nil?
@@ -175,6 +202,43 @@ module Api::V1
       rescue StandardError => e
         Rails.logger.error "Sheets update error: #{e.message}\n#{e.backtrace.join("\n")}"
         render json: { error: 'Failed to update sheet.' }, status: :internal_server_error
+      end
+    end
+
+    def rename_sheet
+      service = current_user.google_sheets_service
+      return render json: { error: 'Google Sheets not connected' }, status: :unauthorized if service.nil?
+
+      spreadsheet_id = params[:id]
+      sheet_id = params[:sheet_id]
+      new_title = params[:new_title]
+
+      if new_title.blank?
+        return render json: { success: false, error: 'New sheet title cannot be blank' }, status: :bad_request
+      end
+
+      begin
+        request = Google::Apis::SheetsV4::BatchUpdateSpreadsheetRequest.new(
+          requests: [
+            {
+              update_sheet_properties: {
+                properties: {
+                  sheet_id: sheet_id.to_i,
+                  title: new_title
+                },
+                fields: 'title'
+              }
+            }
+          ]
+        )
+        service.batch_update_spreadsheet(spreadsheet_id, request)
+        render json: { success: true, new_title: new_title }, status: :ok
+      rescue Google::Apis::ClientError => e
+        Rails.logger.error "Sheets rename error: #{e.message}"
+        render json: { error: 'Sheet not found or unauthorized.' }, status: :bad_request
+      rescue StandardError => e
+        Rails.logger.error "Sheet rename error: #{e.message}"
+        render json: { error: 'Failed to rename sheet.' }, status: :internal_server_error
       end
     end
 
