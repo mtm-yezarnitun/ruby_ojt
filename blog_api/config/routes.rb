@@ -41,6 +41,7 @@ Rails.application.routes.draw do
           get 'sheet/:sheet_name/preview', to: 'sheets#preview'
           put 'sheet/:sheet_name/update', to: 'sheets#update'
           post 'add_sheet', to: 'sheets#add_new_sheet' 
+          delete 'delete_sheet', to: 'sheets#delete_sheet' 
         end
       end
       

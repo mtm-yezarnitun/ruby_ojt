@@ -13,6 +13,14 @@
       <router-link :to="`/sheets/${spreadsheetId}/sheet/${sheetName}/edit`" class="edit-btn"> Edit</router-link>
     </span>
 
+    <span class="del-btn" v-if="isOwner">
+        <button
+          class="btn-delete"
+          @click="deleteSheet()"  
+        >Delete
+      </button>
+    </span>
+
     <div v-if="loading" class="loading-modal">
       <div class="loading-box">
         <div class="spinner"></div>
@@ -37,9 +45,6 @@
         <p>No Data inside Sheet Yet.</p>
       </div>
     </div>
-
-
-
     <div v-if="error">{{ error }}</div>
   </div>
 </template>
@@ -47,9 +52,10 @@
 <script setup>
 import { onMounted, ref, computed } from 'vue'
 import { useStore } from 'vuex'
-import { useRoute } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 
 const store = useStore()
+const router = useRouter()
 const route = useRoute()
 
 const spreadsheetId = route.params.spreadsheetId
@@ -58,10 +64,16 @@ const sheetName = route.params.sheetName
 const sheetData = ref(null)
 const loading = ref(true)
 const error = ref(null)
+const deleting = ref(null)
 
+const currentUser = computed(() => store.getters['auth/user'])
 const sheet = computed(() => sheetData.value?.spreadsheet?.sheets?.[0])
 
 const merges = computed(() => sheet.value?.merges || [])
+
+const isOwner = computed(() => {
+  return sheetData.value?.owner === currentUser.value?.email
+})
 
 const rows = computed(() => {
   const rawRows = sheet.value?.data?.[0]?.row_data || []
@@ -146,6 +158,38 @@ function getCellStyle(format) {
   }
 }
 
+async function deleteSheet() {
+  await store.dispatch('sheets/fetchSpreadsheet', spreadsheetId);
+  const spreadsheet = store.getters['sheets/selectedSpreadsheet'];
+  const allSheets = spreadsheet?.sheets || [];
+  const currentSheet = allSheets.find(s => s.title === sheetName);
+
+  if (!currentSheet)
+  return window.$toast.error(`Cannot Delete Sheet! Sheet Doesn't Exists.`);
+
+  if (allSheets.length <= 1) {
+    return window.$toast.error('Cannot delete the last sheet in spreadsheet!');
+  }
+  console.log(allSheets.length)
+
+  try {
+    loading.value = true;
+    await store.dispatch('sheets/deleteSheet', [spreadsheetId, currentSheet.sheet_id]);
+    deleting.value = null;
+    
+    store.dispatch('sheets/fetchSpreadsheet' , (spreadsheetId) )
+    window.$toast.success(`Sheet Deleted Successfully!`);
+    router.push({ path: `/sheets` })
+
+  } catch (err) {
+    console.error(err);
+    return window.$toast.error(`Cannot Delete Sheet!`);
+
+  } finally {
+    loading.value = false;
+  }
+}
+
 onMounted(async () => {
   try {
     loading.value = true
@@ -153,6 +197,11 @@ onMounted(async () => {
 
     await store.dispatch('sheets/fetchSheetPreview', { spreadsheetId, sheetName })
     sheetData.value = store.getters['sheets/selectedSheetData']
+
+    console.log('sheetData:', sheetData.value)
+    console.log('sheet:', sheet.value)
+    console.log(sheet.value?.properties?.sheet_id)
+
   } catch (e) {
     error.value = 'Failed to load sheet preview.'
     console.error(e)
@@ -255,5 +304,44 @@ onMounted(async () => {
   position: absolute;
   top: 30%;
   right: 9%;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-box {
+  background: #555;
+  border-radius: 12px;
+  padding: 24px;
+  width: 400px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  text-align: center;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.modal-box h3 {
+  margin-bottom: 16px;
+}
+
+.modal-input {
+  width: 80%;
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
 }
 </style>

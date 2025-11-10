@@ -5,7 +5,7 @@
 
       <button v-if="selectedSpreadsheet" @click="clearSelection" class="btn-clear"> Clear Selection</button>
 
-      <button v-if="selectedSpreadsheet" :disabled="!selectedSpreadsheet"  @click="openAddDialog" class="btn-create">+ Add New Sheet</button>
+      <button v-if="selectedSpreadsheet" @click="openAddDialog" class="btn-create">+ Add New Sheet</button>
     </div>
     
     <div v-if="creating" class="modal-overlay">
@@ -178,7 +178,8 @@ async function deleteSpreadsheet(sheet) {
     await store.dispatch('sheets/deleteSpreadsheet', sheet.id)
     window.$toast.success("Spreadsheet deleted successfully!")
     deleting.value = null;
-    await store.dispatch('sheets/fetchSpreadsheets')
+    clearSelection();
+    store.dispatch('sheets/fetchSpreadsheets')
   } catch (err) {
     console.error(err)
     window.$toast.error("Failed to delete spreadsheet.")
@@ -205,7 +206,6 @@ async function addNewSheet() {
 
 onMounted(() => {
   store.dispatch('sheets/fetchSpreadsheets')
-  store.dispatch('sheets/clearSelectedSpreadsheet');
 })
 </script>
 

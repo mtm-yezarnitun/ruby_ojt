@@ -6,7 +6,6 @@ module Api::V1
       drive_service = current_user.google_drive_service
       return render json: { error: 'Google Drive not connected' }, status: :unauthorized if drive_service.nil?
 
-
       begin
         results = drive_service.list_files(
           q: "mimeType='application/vnd.google-apps.spreadsheet' and trashed = false",
@@ -105,13 +104,16 @@ module Api::V1
       service.batch_update_spreadsheet(spreadsheet_id, request)
 
       render json: { success: true, sheet_title: sheet_title }
-    rescue Google::Apis::ClientError => e
-      render json: { success: false, error: e.message }, status: :bad_request
-    rescue => e
+      rescue Google::Apis::ClientError => e
+        render json: { success: false, error: e.message }, status: :bad_request
+      rescue => e
       render json: { success: false, error: e.message }, status: :internal_server_error
     end
 
     def preview
+      drive_service = current_user.google_drive_service
+      return render json: { error: 'Google Drive not connected' }, status: :unauthorized if drive_service.nil?
+
       sheet_service = current_user.google_sheets_service
       return render json: { error: 'Google Sheets not connected' }, status: :unauthorized if sheet_service.nil?
 
@@ -119,15 +121,30 @@ module Api::V1
       sheet_name = params[:sheet_name] 
 
       begin
+
+        file = drive_service.get_file(spreadsheet_id, fields: 'owners')
+        email = file.owners&.first&.email_address
+
         spreadsheet_ttl= sheet_service.get_spreadsheet(spreadsheet_id, fields: 'properties(title)')
         spreadsheet_title = spreadsheet_ttl.properties.title
 
         spreadsheet = sheet_service.get_spreadsheet(
           spreadsheet_id,
           ranges: ["#{sheet_name}!A1:Z55"],
-          fields: 'sheets.data.rowData.values.formattedValue,sheets.data.rowData.values.effectiveFormat.backgroundColor,sheets.data.rowData.values.effectiveFormat.textFormat,sheets.merges'
+          fields: 'sheets.properties,sheets.data.rowData.values.formattedValue,sheets.data.rowData.values.effectiveFormat.backgroundColor,sheets.data.rowData.values.effectiveFormat.textFormat,sheets.merges'
         )
-        render json: { success: 'Fetched Successfully!', spreadsheet_title: spreadsheet_ttl, spreadsheet: spreadsheet, sheet_name: sheet_name}, status: :ok
+        
+        sheet_obj = spreadsheet.sheets.find { |s| s.properties && s.properties.title == sheet_name }
+
+        render json: { 
+          success: 'Fetched Successfully!', 
+          owner: email, 
+          spreadsheet_id: spreadsheet_id, 
+          spreadsheet_title: spreadsheet_ttl, 
+          spreadsheet: spreadsheet, 
+          sheet_name: sheet_name,
+          sheet_id: sheet_obj.properties&.sheet_id
+          }, status: :ok
       rescue Google::Apis::ClientError => e
         render json: { error: 'Invalid spreadsheet or sheet access denied.' }, status: :bad_request
 
@@ -178,6 +195,29 @@ module Api::V1
         render json: { error: 'Failed to delete spreadsheet.' }, status: :internal_server_error
       end
     end
+    
+    def delete_sheet
+      service = current_user.google_sheets_service
+      return render json: { error: 'Google Sheets not connected' }, status: :unauthorized if service.nil?
 
+      spreadsheet_id = params[:id]
+      sheet_id = params[:sheet_id]
+
+      begin
+        request = Google::Apis::SheetsV4::BatchUpdateSpreadsheetRequest.new(
+          requests: [
+            { delete_sheet: { sheet_id: sheet_id.to_i } }
+          ]
+        )
+        service.batch_update_spreadsheet(spreadsheet_id,request)
+        render json: { success: 'Sheet Deleted Successfully.' }, status: :ok
+      rescue Google::Apis::ClientError => e
+        Rails.logger.error "Sheets API error: #{e.message}"
+        render json: { error: 'Sheet not found or unauthorized.' }, status: :bad_request
+      rescue StandardError => e
+        Rails.logger.error "Sheet delete error: #{e.message}"
+        render json: { error: 'Failed to delete sheet.' }, status: :internal_server_error
+      end
+    end
   end
 end

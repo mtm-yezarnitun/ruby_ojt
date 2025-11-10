@@ -52,7 +52,7 @@ const sheets = {
 
         commit('setSpreadsheets', response.data.spreadsheets || []);
       } catch (err) {
-        console.error("Failed to fetch spreadsheets:", err);
+        console.error("Failed to fetch spreadsheets: Try Login Again.", err);
         commit('setError', "Failed to fetch spreadsheets");
       } finally {
         commit('setLoading', false);
@@ -65,7 +65,6 @@ const sheets = {
       try {
         const token = rootGetters['auth/token'] || localStorage.getItem('token');
         if (!token) throw new Error("No authentication token found");
-
         const response = await axios.get(`${API_URL}/api/v1/sheets/${spreadsheetId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -84,6 +83,7 @@ const sheets = {
 
       try {
         const token = rootGetters['auth/token'] || localStorage.getItem('token');
+        if (!token) throw new Error("No authentication token found");
         const response = await axios.get(
           `${API_URL}/api/v1/sheets/${spreadsheetId}/sheet/${sheetName}/preview`,
           { headers: { Authorization: `Bearer ${token}` } }
@@ -98,6 +98,7 @@ const sheets = {
     },
     async updateSheet({ rootGetters }, { spreadsheetId, sheetName, updates }) {
       const token = rootGetters['auth/token'] || localStorage.getItem('token');
+      if (!token) throw new Error("No authentication token found");
       try {
         const response = await axios.put(
           `${API_URL}/api/v1/sheets/${spreadsheetId}/sheet/${sheetName}/update`,
@@ -112,6 +113,7 @@ const sheets = {
     },
     async addNewSheet({ rootGetters }, { spreadsheetId, title }) {
       const token = rootGetters['auth/token'] || localStorage.getItem('token');
+      if (!token) throw new Error("No authentication token found");
       try {
         const response = await axios.post(
           `${API_URL}/api/v1/sheets/${spreadsheetId}/add_sheet`,
@@ -124,8 +126,24 @@ const sheets = {
         throw err;
       }
     },
+    async deleteSheet({rootGetters},[spreadsheetId,sheetId]) {
+      const token = rootGetters['auth/token'] || localStorage.getItem('token')
+      if (!token) throw new Error("No authentication token found");
+      
+      try {
+        const response =  await axios.delete(`${API_URL}/api/v1/sheets/${spreadsheetId}/delete_sheet`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { sheet_id: sheetId }
+      })
+        return response.data
+      } catch (err) {
+        console.error("Failed to delete Sheet:", err)
+        throw err
+      }
+    },
     async createNewSpreadsheet({ rootGetters }, title) {
       const token = rootGetters['auth/token'] || localStorage.getItem('token');
+      if (!token) throw new Error("No authentication token found");
       try {
         const response = await axios.post(
           `${API_URL}/api/v1/sheets/create_spreadsheet`,
@@ -140,6 +158,7 @@ const sheets = {
     },
     async deleteSpreadsheet({ rootGetters }, spreadsheetId) {
       const token = rootGetters['auth/token'] || localStorage.getItem('token')
+      if (!token) throw new Error("No authentication token found");
       try {
         const response = await axios.delete(`${API_URL}/api/v1/sheets/${spreadsheetId}`, {
           headers: { Authorization: `Bearer ${token}` }
