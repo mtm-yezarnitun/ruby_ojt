@@ -12,6 +12,7 @@
           <button @click="renameBox()">Rename</button>
           <button @click="openCopyModal()">Copy To</button>
           <button @click="duplicateBox()">Duplicate</button>
+          <button @click="goToCompare"> Comparison</button>
           <button @click="deleteBox()">Delete</button>
         </div>
       </span>
@@ -110,18 +111,20 @@ const sheetData = ref(null)
 const loading = ref(true)
 const error = ref(null)
 const deleting = ref(null)
+
 const renaming = ref(null)
 const newTtl = ref()
+
 const duplicating = ref()
 const duplicateTitle = ref('')
+
 const copying = ref(false)
 const allSpreadsheets = ref([])
+
 const selectedSpreadsheetToCopy = ref(null)
 const showActions = ref(false)
 
-function toggleActions() {
-  showActions.value = !showActions.value
-}
+
 
 const currentUser = computed(() => store.getters['auth/user'])
 const sheet = computed(() => sheetData.value?.spreadsheet?.sheets?.[0])
@@ -136,6 +139,14 @@ const rows = computed(() => {
   if (merges.value.length > 0) return rawRows
   return rawRows.filter(row => row.values && row.values.some(cell => cell.formatted_value))
 })
+
+function goToCompare() {
+  router.push({ name: 'SheetCompare' }) 
+}
+
+function toggleActions() {
+  showActions.value = !showActions.value
+}
 
 function getMergeSpan(r, c) {
   for (const merge of merges.value) {
@@ -439,6 +450,38 @@ onMounted(async () => {
 }
 
 .del-btn {
+  padding: 5px;
+}
+.compare-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.compare-box {
+  display: flex;
+  flex-direction: column;
+  background-color: rgb(109, 109, 109);
+  padding: 1rem 3rem;
+  border-radius: 10px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.compare-box select {
+  padding: 10px;
+  border-radius: 5px;
+  font-family:monospace;
+}
+
+.cmp-btn {
   padding: 5px;
 }
 

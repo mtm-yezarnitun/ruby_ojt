@@ -3,6 +3,8 @@
     <div class="spreadsheet-btn">
       <button v-if="!selectedSpreadsheet" @click="openCreateDialog" class="btn-create">+ Create New Spreadsheet</button>
 
+      <button @click="goToCompare" :class="selectedSpreadsheet ? 'btn-compare' : 'btn-compare-before'"> Compare Sheets </button>
+
       <button v-if="selectedSpreadsheet" @click="clearSelection" class="btn-clear"> Clear Selection</button>
 
       <button v-if="selectedSpreadsheet" @click="openAddDialog" class="btn-create">+ Add New Sheet</button>
@@ -123,7 +125,9 @@ const selectSheet = (sheetName) => {
   const spreadsheetId = selectedSpreadsheet.value.id
   router.push({ path: `/preview/${spreadsheetId}/${sheetName}` })
 }
-
+function goToCompare() {
+  router.push({ name: 'SheetCompare' }) 
+}
 function openCreateDialog() {
   creating.value = true
 }
@@ -332,6 +336,16 @@ onMounted(() => {
   position: absolute;
   right: 0%;
   top: -70px;
+}
+
+.btn-compare-before {
+  position: absolute;
+  right: 0%;
+  top: -70px;
+}
+
+.btn-compare {
+  margin-bottom: 20px;
 }
 
 .loading-modal {
