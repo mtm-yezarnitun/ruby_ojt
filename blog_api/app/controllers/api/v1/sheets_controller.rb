@@ -160,6 +160,42 @@ module Api::V1
       render json: { success: false, error: e.message }, status: :unprocessable_entity
     end
 
+    def append_rows
+      service = current_user.google_sheets_service
+      return render json: { error: 'Google Sheets not connected' }, status: :unauthorized if service.nil?
+
+      spreadsheet_id = params[:id]
+      sheet_name     = params[:sheet_name]
+      values     = params[:rows]
+      start_row  = params[:start_row].to_i
+
+      if sheet_name.blank? || values.blank?
+        return render json: { success: false, error: "Sheet name and rows are required" }, status: :bad_request
+      end
+      begin
+
+        value_range = Google::Apis::SheetsV4::ValueRange.new(
+          range: "#{sheet_name}!A#{start_row + 1}",
+          values: values
+        )
+
+        service.append_spreadsheet_value(
+          spreadsheet_id,
+          "#{sheet_name}!A1",
+          value_range,
+          value_input_option: 'USER_ENTERED'
+        )
+
+        render json: { success: true, message: "Rows appended successfully" }, status: :ok
+      rescue Google::Apis::ClientError => e
+        render json: { success: false, error: e.message }, status: :bad_request
+      rescue StandardError => e
+        Rails.logger.error "Sheets append_rows error: #{e.message}\n#{e.backtrace.join("\n")}"
+        render json: { success: false, error: "Failed to append rows" }, status: :internal_server_error
+      end
+    end
+
+
     def preview
       drive_service = current_user.google_drive_service
       return render json: { error: 'Google Drive not connected' }, status: :unauthorized if drive_service.nil?

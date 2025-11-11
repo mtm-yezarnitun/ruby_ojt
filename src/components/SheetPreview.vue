@@ -11,6 +11,7 @@
         <div v-if="showActions" class="action-menu">
           <button @click="renameBox()">Rename</button>
           <button @click="openCopyModal()">Copy To</button>
+          <button @click="openPasteModal()">Copy/Paste</button>
           <button @click="duplicateBox()">Duplicate</button>
           <button @click="goToCompare"> Comparison</button>
           <button @click="deleteBox()">Delete</button>
@@ -73,6 +74,42 @@
       </div>
     </div>
 
+    <div v-if="pasting" class="paste-modal">
+      <div class="paste-box">
+        <p>Select destination spreadsheet:</p>
+        <select v-model="selectedSpreadsheetToCopy">
+          <option v-for="ss in allSpreadsheets" :key="ss.id" :value="ss.id">
+            {{ ss.name }}
+          </option>
+        </select>
+
+        <button @click="loadSheets">Load Sheets</button>
+
+        <p>Select destination sheet:</p>
+        <select v-model="selectedSheetToCopy">
+          <option disabled value="">Select Sheet</option>
+          <option v-for="s in sourceSheets" :key="s.sheet_id" :value="s.title">
+            {{ s.title }}
+            </option>
+        </select>
+
+        <div class="range-selector">
+          <p>Copy Range (Source Sheet):</p>
+          <label for="selectedRange.startRow">Start Row</label>
+          <input type="number" v-model.number="selectedRange.startRow" placeholder="Start Row" />
+          <label for="selectedRange.endRow">End Row</label>
+          <input type="number" v-model.number="selectedRange.endRow" placeholder="End Row" />
+          <label for="selectedRange.startCol">Start Col</label>
+          <input type="number" v-model.number="selectedRange.startCol" placeholder="Start Col" />
+          <label for="selectedRange.endCol">End Col</label>
+          <input type="number" v-model.number="selectedRange.endCol" placeholder="End Col" />
+        </div>
+
+        <button @click="copySelectedRangeToTarget(selectedSpreadsheetToCopy, selectedSheetToCopy)" class="pst-btn">Copy Range</button>
+        <button @click="pasting = false" class="pst-btn">Cancel</button>
+      </div>
+    </div>
+
     <div v-if="sheetData" class="sheet-preview">
       <table>
         <tbody>
@@ -119,15 +156,17 @@ const duplicating = ref()
 const duplicateTitle = ref('')
 
 const copying = ref(false)
+const pasting = ref(false)
 const allSpreadsheets = ref([])
+const sourceSheets= ref([])
 
 const selectedSpreadsheetToCopy = ref(null)
+const selectedSheetToCopy = ref(null)
 const showActions = ref(false)
-
-
 
 const currentUser = computed(() => store.getters['auth/user'])
 const sheet = computed(() => sheetData.value?.spreadsheet?.sheets?.[0])
+const selectedRange = ref({ startRow: 0, endRow: 0, startCol: 0, endCol: 0 })
 
 const merges = computed(() => sheet.value?.merges || [])
 const isOwner = computed(() => {
@@ -376,6 +415,97 @@ async function copySheetToSpreadsheet() {
   }
 }
 
+async function openPasteModal() {
+  pasting.value = true
+  showActions.value = false
+  try {
+    const response = store.getters['sheets/spreadsheets']
+    allSpreadsheets.value = (response || []).filter(
+      ss => ss.email === currentUser.value?.email
+    )
+  } catch (err) {
+    console.error("Failed to fetch spreadsheets:", err)
+    window.$toast.error("Failed to load spreadsheets")
+  }
+}
+
+async function loadSheets() {
+  if (!selectedSpreadsheetToCopy.value) return
+  loading.value = true
+  try {
+    await store.dispatch('sheets/fetchSpreadsheet', selectedSpreadsheetToCopy.value)
+    sourceSheets.value = store.getters['sheets/selectedSpreadsheet']?.sheets || []
+  } catch (err) {
+    console.error('Failed to load source sheets:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function copySelectedRangeToTarget() {
+  if (!selectedSpreadsheetToCopy.value) {
+    return window.$toast.error("Please select a destination spreadsheet")
+  }
+  if (!selectedSheetToCopy.value) {
+    return window.$toast.error("Please select a destination sheet")
+  }
+
+  const { startRow, endRow, startCol, endCol } = selectedRange.value
+
+  if (
+    startRow == null || endRow == null ||
+    startCol == null || endCol == null
+  ) {
+    return window.$toast.error("Please specify a valid range")
+  }
+
+  try {
+    loading.value = true
+
+    await store.dispatch('sheets/fetchSpreadsheet', selectedSpreadsheetToCopy.value)
+    const destSpreadsheet = store.getters['sheets/selectedSpreadsheet']
+    const destSheet = destSpreadsheet.sheets.find(s => s.title === selectedSheetToCopy.value)
+
+    if (!destSheet) return window.$toast.error("Destination sheet not found")
+
+    const destData = destSheet.data?.[0]?.row_data || []
+
+    let lastRowIndex = destData.length
+    for (let i = destData.length - 1; i >= 0; i--) {
+      if (destData[i].values && destData[i].values.some(cell => cell.formatted_value)) {
+        lastRowIndex = i + 1
+        break
+      }
+    }
+
+    const sourceData = sheet.value.data?.[0]?.row_data || []
+    const rowsToCopy = []
+    for (let r = startRow; r <= endRow; r++) {
+      const row = sourceData[r]
+      if (!row) continue
+      const newRow = row.values.slice(startCol, endCol + 1).map(cell => cell?.formatted_value || "")
+      rowsToCopy.push(newRow)
+    }
+
+    await store.dispatch('sheets/appendRows', {
+      spreadsheetId: selectedSpreadsheetToCopy.value,
+      sheet_name: selectedSheetToCopy.value,
+      startRow: lastRowIndex,
+      rows: rowsToCopy
+    })
+
+    window.$toast.success("Range copied successfully!")
+    pasting.value = false
+
+  } catch (err) {
+    console.error(err)
+    window.$toast.error("Failed to copy range")
+  } finally {
+    loading.value = false
+  }
+}
+
+
 onMounted(async () => {
   try {
     const sheetName = route.params.sheetName
@@ -483,6 +613,41 @@ onMounted(async () => {
 
 .cmp-btn {
   padding: 5px;
+}
+
+.paste-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9998;
+}
+
+.paste-box {
+  display: flex;
+  flex-direction: column;
+  background-color: rgb(109, 109, 109);
+  padding: 1rem 3rem;
+  border-radius: 10px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.paste-box select {
+  padding: 10px;
+  border-radius: 5px;
+  font-family:monospace;
+}
+
+.pst-btn {
+  align-content: center;
+  margin: 0 auto;
+  margin-top: 20px;
 }
 
 .copy-modal {

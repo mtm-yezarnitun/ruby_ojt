@@ -44,6 +44,7 @@ Rails.application.routes.draw do
           post 'add_sheet', to: 'sheets#add_new_sheet' 
           post 'duplicate_sheet', to: 'sheets#duplicate_sheet'
           post 'sheets/copy_sheet_to_spreadsheet', to: 'sheets#copy_sheet_to_spreadsheet'
+          put 'sheet/:sheet_id/append_rows', to: 'sheets#append_rows'
           delete 'delete_sheet', to: 'sheets#delete_sheet' 
         end
       end

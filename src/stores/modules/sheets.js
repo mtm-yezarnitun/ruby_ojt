@@ -217,6 +217,22 @@ const sheets = {
         throw err
       }
     },  
+    async appendRows({ rootGetters }, { spreadsheetId, sheet_name, startRow, rows }) {
+      const token = rootGetters['auth/token'] || localStorage.getItem('token');
+      if (!token) throw new Error("No authentication token found");
+
+      try {
+        const response = await axios.put(
+          `${API_URL}/api/v1/sheets/${spreadsheetId}/sheet/${sheet_name}/append_rows`,
+          { sheet_name, start_row: startRow, rows },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return response.data;
+      } catch (err) {
+        console.error("Failed to append rows:", err);
+        throw err;
+      }
+    },
     clearSelectedSheetData({ commit }) {
       commit('clearSelectedSheetData');
     },
