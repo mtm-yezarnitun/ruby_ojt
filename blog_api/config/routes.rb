@@ -43,6 +43,7 @@ Rails.application.routes.draw do
           put 'rename_sheet', to:'sheets#rename_sheet'
           post 'add_sheet', to: 'sheets#add_new_sheet' 
           post 'duplicate_sheet', to: 'sheets#duplicate_sheet'
+          post 'sheets/copy_sheet_to_spreadsheet', to: 'sheets#copy_sheet_to_spreadsheet'
           delete 'delete_sheet', to: 'sheets#delete_sheet' 
         end
       end

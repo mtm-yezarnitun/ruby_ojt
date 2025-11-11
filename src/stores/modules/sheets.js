@@ -188,6 +188,22 @@ const sheets = {
         throw err;
       }
     },
+    async copySheetToSpreadsheet({ rootGetters }, { sourceSpreadsheetId, sheetId, destinationSpreadsheetId }) {
+      const token = rootGetters['auth/token'] || localStorage.getItem('token')
+      if (!token) throw new Error("No authentication token found")
+
+      try {
+        const response = await axios.post(
+          `${API_URL}/api/v1/sheets//${sourceSpreadsheetId}/sheets/copy_sheet_to_spreadsheet`,
+          { source_spreadsheet_id: sourceSpreadsheetId, sheet_id: sheetId, destination_spreadsheet_id: destinationSpreadsheetId },
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+        return response.data
+      } catch (err) {
+        console.error("Failed to copy sheet across spreadsheets:", err)
+        throw err
+      }
+    },
     async deleteSpreadsheet({ rootGetters }, spreadsheetId) {
       const token = rootGetters['auth/token'] || localStorage.getItem('token')
       if (!token) throw new Error("No authentication token found");

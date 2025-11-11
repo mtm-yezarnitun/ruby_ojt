@@ -1,3 +1,4 @@
+require 'httparty'
 module Api::V1
   class SheetsController < ApplicationController
     before_action :authenticate_user!
@@ -135,6 +136,28 @@ module Api::V1
       render json: result
       rescue => e
         render json: { error: e.message }, status: :unprocessable_entity
+    end
+
+    def copy_sheet_to_spreadsheet
+      access_token = current_user.google_access_token
+      source_spreadsheet_id = params[:source_spreadsheet_id]
+      sheet_id = params[:sheet_id]
+      destination_spreadsheet_id = params[:destination_spreadsheet_id]
+
+      url = "https://sheets.googleapis.com/v4/spreadsheets/#{source_spreadsheet_id}/sheets/#{sheet_id}:copyTo"
+      body = { destinationSpreadsheetId: destination_spreadsheet_id }.to_json
+
+      response = HTTParty.post(url,
+        headers: {
+          'Authorization' => "Bearer #{access_token}",
+          'Content-Type' => 'application/json'
+        },
+        body: body
+      )
+
+      render json: { success: true, copied_sheet: response.parsed_response }, status: :ok
+    rescue => e
+      render json: { success: false, error: e.message }, status: :unprocessable_entity
     end
 
     def preview

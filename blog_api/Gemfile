@@ -23,7 +23,7 @@ gem 'sidekiq-cron'
 gem 'slim-rails'
 gem 'csv'
 gem 'fiddle'
-gem 'rubocop'
+gem 'httparty' 
 
 # gem 'wicked_pdf'
 # gem 'letter_opener_web', group: :development

@@ -104,7 +104,6 @@ function isMergedCellHidden(r, c) {
   return false
 }
 
-
 function addRow() {
   const columns = editableRows.value[0]?.length || 1
   editableRows.value.push(Array(columns).fill(''))
@@ -139,6 +138,22 @@ function removeColumn(index) {
   })
 }
 
+async function saveChanges() {
+  const updates = editableRows.value.map((row, rIndex) => ({
+    range: `${sheetName}!A${rIndex + 1}`,
+    values: [row]
+  }))
+
+  try {
+    await store.dispatch('sheets/updateSheet', { spreadsheetId, sheetName, updates })
+    window.$toast.success("Sheet Updated Successfully!")
+    router.push({ path: `/preview/${spreadsheetId}/${sheetName}` })
+  } catch (err) {
+    window.$toast.error("Can't Update Sheet!")
+    console.error(err)
+  }
+}
+
 onMounted(async () => {
   loading.value = true
   try {
@@ -158,21 +173,6 @@ onMounted(async () => {
   }
 })
 
-async function saveChanges() {
-  const updates = editableRows.value.map((row, rIndex) => ({
-    range: `${sheetName}!A${rIndex + 1}`,
-    values: [row]
-  }))
-
-  try {
-    await store.dispatch('sheets/updateSheet', { spreadsheetId, sheetName, updates })
-    window.$toast.success("Sheet Updated Successfully!")
-    router.push({ path: `/preview/${spreadsheetId}/${sheetName}` })
-  } catch (err) {
-    window.$toast.error("Can't Update Sheet!")
-    console.error(err)
-  }
-}
 </script>
 
 <style scoped>

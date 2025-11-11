@@ -3,6 +3,19 @@
     <div class="title">
       <h1 v-if="sheetData" class="spreadsheet-title">{{ sheetData.spreadsheet_title.properties.title }} / </h1>
       <h2 class="sheet-name">{{ sheetName }}</h2>
+      
+      <span class="action-dropdown" v-if="isOwner">
+        <button class="action-toggle" @click="toggleActions">
+          ⚙️
+        </button>
+        <div v-if="showActions" class="action-menu">
+          <button @click="renameBox()">Rename</button>
+          <button @click="openCopyModal()">Copy To</button>
+          <button @click="duplicateBox()">Duplicate</button>
+          <button @click="deleteBox()">Delete</button>
+        </div>
+      </span>
+
     </div>
 
     <span class="back-btn">
@@ -13,34 +26,13 @@
       <router-link :to="`/sheets/${spreadsheetId}/sheet/${sheetName}/edit`" class="edit-btn"> Edit</router-link>
     </span>
 
-    <span class="rename-btn" v-if="isOwner">
-        <button
-          class="btn-rename"
-          @click="renameBox()"  
-        >Rename
-      </button>
-    </span>
-
-    <span class="del-btn" v-if="isOwner">
-        <button
-          class="btn-delete"
-          @click="deleteSheet()"  
-        >Delete
-      </button>
-    </span>
-
-    <div v-if="renaming" class="rename-modal">
-      <div class="rename-box">
-        <p>Enter your new Title:</p>
-        <input type="text" v-model="newTtl" placeholder="New sheet title" />
-        <button @click="renameSheet" class="rnm-btn">Save</button>
-        <button @click="renaming = false" class="rnm-btn">Cancel</button>
+    <div v-if="deleting" class="delete-modal">
+      <div class="delete-box">
+        <p>Are you sure you want to delete this sheet ?</p>
+        <button @click="deleteSheet()" class="del-btn">Confirm</button>
+        <button @click="deleting = false" class="del-btn">Cancel</button>
       </div>
     </div>
-
-    <span class="copy-btn" v-if="isOwner">
-      <button class="btn-copy" @click="duplicateBox()">Duplicate</button>
-    </span>
 
     <div v-if="duplicating" class="duplicate-modal">
       <div class="duplicate-box">
@@ -51,10 +43,32 @@
       </div>
     </div>
 
+    <div v-if="renaming" class="rename-modal">
+      <div class="rename-box">
+        <p>Enter your new Title:</p>
+        <input type="text" v-model="newTtl" placeholder="New sheet title" />
+        <button @click="renameSheet" class="rnm-btn">Save</button>
+        <button @click="renaming = false" class="rnm-btn">Cancel</button>
+      </div>
+    </div>
+
     <div v-if="loading" class="loading-modal">
       <div class="loading-box">
         <div class="spinner"></div>
         <p>Loading sheet data...</p>
+      </div>
+    </div>
+
+    <div v-if="copying" class="copy-modal">
+      <div class="copy-box">
+        <p>Select destination spreadsheet:</p>
+        <select v-model="selectedSpreadsheetToCopy">
+          <option v-for="ss in allSpreadsheets" :key="ss.id" :value="ss.id">
+            {{ ss.name }}
+          </option>
+        </select>
+        <button @click="copySheetToSpreadsheet" class="cpy-btn">Copy</button>
+        <button @click="copying = false" class="cpy-btn">Cancel</button>
       </div>
     </div>
 
@@ -75,6 +89,7 @@
         <p>No Data inside Sheet Yet.</p>
       </div>
     </div>
+
     <div v-if="error">{{ error }}</div>
   </div>
 </template>
@@ -99,6 +114,14 @@ const renaming = ref(null)
 const newTtl = ref()
 const duplicating = ref()
 const duplicateTitle = ref('')
+const copying = ref(false)
+const allSpreadsheets = ref([])
+const selectedSpreadsheetToCopy = ref(null)
+const showActions = ref(false)
+
+function toggleActions() {
+  showActions.value = !showActions.value
+}
 
 const currentUser = computed(() => store.getters['auth/user'])
 const sheet = computed(() => sheetData.value?.spreadsheet?.sheets?.[0])
@@ -191,6 +214,10 @@ function getCellStyle(format) {
   }
 }
 
+function deleteBox() {
+  deleting.value = true
+}
+
 async function deleteSheet() {
   await store.dispatch('sheets/fetchSpreadsheet', spreadsheetId);
   const spreadsheet = store.getters['sheets/selectedSpreadsheet'];
@@ -212,13 +239,17 @@ async function deleteSheet() {
     store.dispatch('sheets/fetchSpreadsheet' , (spreadsheetId) )
     window.$toast.success(`Sheet Deleted Successfully!`);
     router.push({ path: `/sheets` })
-
+    showActions.value = false
   } catch (err) {
     console.error(err);
+    showActions.value = false
+    deleting.value = false
     return window.$toast.error(`Cannot Delete Sheet!`);
 
   } finally {
     loading.value = false;
+    showActions.value = false
+    deleting.value = false
   }
 }
 
@@ -245,13 +276,16 @@ async function renameSheet() {
     await store.dispatch('sheets/fetchSheetPreview', { spreadsheetId, sheetName: newTtl.value })
     window.$toast.success(`Sheet renamed to "${newTtl.value}"`)
     router.push({ path: `/preview/${spreadsheetId}/${newTtl.value}` })
+    showActions.value = false
 
   } catch (err) {
     console.error(err)
     window.$toast.error('Failed to rename sheet.')
+    showActions.value = false
   } finally {
     loading.value = false
     newTtl.value = null
+    showActions.value = false
   }
 }
 
@@ -278,12 +312,56 @@ async function duplicateSheetAction() {
     store.dispatch('sheets/fetchSpreadsheet', (spreadsheetId) )
     window.$toast.success(`Sheet duplicated as "${duplicateTitle.value}"`)
     router.push({ path: `/sheets` })
+    showActions.value = false
   } catch (err) {
     console.error(err)
+    showActions.value = false
     window.$toast.error('Failed to duplicate sheet.')
   } finally {
     loading.value = false
     duplicateTitle.value = ''
+    showActions.value = false
+  }
+}
+
+async function openCopyModal() {
+  copying.value = true
+  try {
+    const response = store.getters['sheets/spreadsheets']
+    allSpreadsheets.value = (response || []).filter(
+      ss => ss.email === currentUser.value?.email
+    )
+  } catch (err) {
+    console.error("Failed to fetch spreadsheets:", err)
+    window.$toast.error("Failed to load spreadsheets")
+  }
+}
+
+async function copySheetToSpreadsheet() {
+  if (!selectedSpreadsheetToCopy.value) {
+    return window.$toast.error("Please select a spreadsheet")
+  }
+
+  try {
+    loading.value = true
+    const sheetId = sheet.value.properties.sheet_id
+
+    await store.dispatch('sheets/copySheetToSpreadsheet', {
+      sourceSpreadsheetId: spreadsheetId,
+      sheetId,
+      destinationSpreadsheetId: selectedSpreadsheetToCopy.value
+    })
+
+    window.$toast.success("Sheet copied successfully!")
+    copying.value = false
+    showActions.value = false
+  } catch (err) {
+    console.error(err)
+    showActions.value = false
+    window.$toast.error("Failed to copy sheet")
+  } finally {
+    loading.value = false
+    showActions.value = false
   }
 }
 
@@ -294,6 +372,7 @@ onMounted(async () => {
     error.value = null
     await store.dispatch('sheets/fetchSheetPreview', { spreadsheetId, sheetName })
     sheetData.value = store.getters['sheets/selectedSheetData']
+    await store.dispatch('sheets/fetchSpreadsheets')
 
   } catch (e) {
     error.value = 'Failed to load sheet preview.'
@@ -333,6 +412,67 @@ onMounted(async () => {
   100% {
     transform: rotate(360deg);
   }
+}
+
+.delete-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.delete-box {
+  display: flex;
+  flex-direction: column;
+  background-color: rgb(109, 109, 109);
+  padding: 1rem 3rem;
+  border-radius: 10px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.del-btn {
+  padding: 5px;
+}
+
+.copy-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.copy-box {
+  display: flex;
+  flex-direction: column;
+  background-color: rgb(109, 109, 109);
+  padding: 1rem 3rem;
+  border-radius: 10px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.copy-box select {
+  padding: 10px;
+  border-radius: 5px;
+  font-family:monospace;
+}
+
+.cpy-btn {
+  padding: 5px;
 }
 
 .duplicate-modal {
@@ -503,4 +643,50 @@ onMounted(async () => {
   justify-content: center;
   gap: 10px;
 }
+
+.action-dropdown {
+  position: relative;
+  margin-left: 20px;
+  display: inline-block;
+}
+
+.action-toggle {
+  background: transparent;
+  color: #fff;
+  border: none;
+  padding: 5px;
+  border-radius: 70%;
+  cursor: pointer;
+}
+
+.action-toggle:hover {
+  background-color: #555;
+}
+.action-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: #333;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  z-index: 10;
+}
+
+.action-menu button {
+  background: none;
+  border: none;
+  color: #fff;
+  text-align: left;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.action-menu button:hover {
+  background-color: #444;
+}
+
 </style>
