@@ -5,9 +5,13 @@
 
       <button @click="goToCompare" :class="selectedSpreadsheet ? 'btn-compare' : 'btn-compare-before'"> Compare Sheets </button>
 
+      <button v-if="!all" @click="toggleSheets" class="btn-toggle" > Show All Sheets </button>
+      <button v-else @click="toggleSheets" class="btn-toggle" > Show My Sheets </button>
+
       <button v-if="selectedSpreadsheet" @click="clearSelection" class="btn-clear"> Clear Selection</button>
 
       <button v-if="selectedSpreadsheet" @click="openAddDialog" class="btn-create">+ Add New Sheet</button>
+
     </div>
     
     <div v-if="creating" class="modal-overlay">
@@ -103,7 +107,7 @@ import { useRouter } from 'vue-router'
 const store = useStore()
 const router = useRouter()
 
-const spreadsheets = computed(() => store.getters['sheets/spreadsheets'])
+const spreadsheets = ref([])
 const selectedSpreadsheet = computed(() => store.getters['sheets/selectedSpreadsheet'])
 const loading = computed(() => store.getters['sheets/loading'])
 const error = computed(() => store.getters['sheets/error'])
@@ -112,6 +116,7 @@ const newTitle = ref('')
 const adding = ref(false)
 const newSheet = ref('')
 const deleting = ref(null)
+const all = ref(false)
 
 const currentUser = computed(() => store.getters['auth/user'])
 
@@ -125,9 +130,27 @@ const selectSheet = (sheetName) => {
   const spreadsheetId = selectedSpreadsheet.value.id
   router.push({ path: `/preview/${spreadsheetId}/${sheetName}` })
 }
+
 function goToCompare() {
   router.push({ name: 'SheetCompare' }) 
 }
+
+async function toggleSheets() {
+  all.value = !all.value
+  await store.dispatch('sheets/fetchSpreadsheets') 
+  const response = store.getters['sheets/spreadsheets']
+  
+  if(all.value === true) {
+    spreadsheets.value = (response || [])
+  }
+
+  else {
+    spreadsheets.value = (response || []).filter(
+    ss => ss.email === currentUser.value?.email
+  ) 
+  }
+}
+
 function openCreateDialog() {
   creating.value = true
 }
@@ -208,8 +231,13 @@ async function addNewSheet() {
   }
 }
 
-onMounted(() => {
-  store.dispatch('sheets/fetchSpreadsheets') 
+onMounted( async () => {
+  await store.dispatch('sheets/fetchSpreadsheets') 
+  const response = store.getters['sheets/spreadsheets']
+  spreadsheets.value = (response || []).filter(
+    ss => ss.email === currentUser.value?.email
+  ) 
+
   store.dispatch('sheets/clearSelectedSpreadsheet');
   store.dispatch('sheets/clearSelectedSheetData');
 })
