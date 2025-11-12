@@ -1,22 +1,32 @@
 <template>
   <div>
     <div class="title">
-      <h1 v-if="sheetData" class="spreadsheet-title">{{ sheetData.spreadsheet_title.properties.title }} / </h1>
-      <h2 class="sheet-name">{{ sheetName }}</h2>
-      
-      <span class="action-dropdown" v-if="isOwner">
-        <button class="action-toggle" @click="toggleActions">
-          ⚙️
-        </button>
-        <div v-if="showActions" class="action-menu">
-          <button @click="renameBox()">Rename</button>
-          <button @click="openCopyModal()">Copy To</button>
-          <button @click="openPasteModal()">Copy/Paste</button>
-          <button @click="duplicateBox()">Duplicate</button>
-          <button @click="goToCompare"> Comparison</button>
-          <button @click="deleteBox()">Delete</button>
-        </div>
-      </span>
+      <div class="name">
+        <h1 v-if="sheetData" class="spreadsheet-title">{{ sheetData.spreadsheet_title.properties.title }} / </h1>
+        <h2 class="sheet-name">{{ sheetName }}</h2>
+        
+        <span class="action-dropdown" v-if="isOwner">
+          <button class="action-toggle" @click="toggleActions">
+            ⚙️
+          </button>
+          <div v-if="showActions" class="action-menu">
+            <button @click="renameBox()">Rename</button>
+            <button @click="openCopyModal()">Copy To</button>
+            <button @click="openPasteModal()">Data Copy</button>
+            <button @click="duplicateBox()">Duplicate</button>
+            <button @click="goToCompare"> Comparison</button>
+            <button @click="deleteBox()">Delete</button>
+          </div>
+        </span>
+      </div>
+        
+      <div class="sheet-meta" v-if="sheetData">
+        <p>Id : {{ sheetData.sheet_id }}</p>
+        <p><strong>Row Count :</strong> {{actualRowCount}} |
+        <strong>Column Count :</strong> {{ actualColCount }}</p>
+        <p><strong>Owner:</strong> {{ sheetData.owner }}</p>
+        <p v-if="sheetData.last_updated"><strong>Last Updated:</strong> {{ formatDate(sheetData.last_updated) }}</p>
+      </div>
 
     </div>
 
@@ -85,23 +95,25 @@
 
         <button @click="loadSheets">Load Sheets</button>
 
-        <p>Select destination sheet:</p>
-        <select v-model="selectedSheetToCopy">
-          <option disabled value="">Select Sheet</option>
-          <option v-for="s in sourceSheets" :key="s.sheet_id" :value="s.title">
-            {{ s.title }}
-            </option>
-        </select>
+        <div v-if="spreadsheetSelected" class="sheet-box">
+          <p>Select destination sheet:</p>
+          <select v-model="selectedSheetToCopy">
+            <option disabled value="">Select Sheet</option>
+            <option v-for="s in sourceSheets" :key="s.sheet_id" :value="s.title">
+              {{ s.title }}
+              </option>
+          </select>
+        </div>
 
         <div class="range-selector">
           <p>Copy Range (Source Sheet):</p>
-          <label for="selectedRange.startRow">Start Row</label>
+          <label for="selectedRange.startRow"> Start Row : </label>
           <input type="number" v-model.number="selectedRange.startRow" placeholder="Start Row" />
-          <label for="selectedRange.endRow">End Row</label>
+          <label for="selectedRange.endRow"> End Row : </label>
           <input type="number" v-model.number="selectedRange.endRow" placeholder="End Row" />
-          <label for="selectedRange.startCol">Start Col</label>
+          <label for="selectedRange.startCol"> Start Col : </label>
           <input type="number" v-model.number="selectedRange.startCol" placeholder="Start Col" />
-          <label for="selectedRange.endCol">End Col</label>
+          <label for="selectedRange.endCol"> End Col : </label>
           <input type="number" v-model.number="selectedRange.endCol" placeholder="End Col" />
         </div>
 
@@ -157,6 +169,7 @@ const duplicateTitle = ref('')
 
 const copying = ref(false)
 const pasting = ref(false)
+const spreadsheetSelected = ref(false)
 const allSpreadsheets = ref([])
 const sourceSheets= ref([])
 
@@ -178,6 +191,25 @@ const rows = computed(() => {
   if (merges.value.length > 0) return rawRows
   return rawRows.filter(row => row.values && row.values.some(cell => cell.formatted_value))
 })
+
+const actualRowCount = computed(() => {
+  return rows.value.length
+})
+
+const actualColCount = computed(() => {
+  if (!rows.value || rows.value.length === 0) return 0
+
+  let maxCols = 0
+  rows.value.forEach(row => {
+    const filledCols = (row.values || []).filter(cell => cell.formatted_value).length
+    if (filledCols > maxCols) maxCols = filledCols
+  })
+  return maxCols
+})
+
+const formatDate = (isoString) => {
+  return new Date(isoString).toLocaleString()
+}
 
 function goToCompare() {
   router.push({ name: 'SheetCompare' }) 
@@ -417,7 +449,9 @@ async function copySheetToSpreadsheet() {
 
 async function openPasteModal() {
   pasting.value = true
+  selectedSpreadsheetToCopy.value = false
   showActions.value = false
+  spreadsheetSelected.value = false
   try {
     const response = store.getters['sheets/spreadsheets']
     allSpreadsheets.value = (response || []).filter(
@@ -432,6 +466,7 @@ async function openPasteModal() {
 async function loadSheets() {
   if (!selectedSpreadsheetToCopy.value) return
   loading.value = true
+  spreadsheetSelected.value = true
   try {
     await store.dispatch('sheets/fetchSpreadsheet', selectedSpreadsheetToCopy.value)
     sourceSheets.value = store.getters['sheets/selectedSpreadsheet']?.sheets || []
@@ -505,7 +540,6 @@ async function copySelectedRangeToTarget() {
   }
 }
 
-
 onMounted(async () => {
   try {
     const sheetName = route.params.sheetName
@@ -529,10 +563,21 @@ onMounted(async () => {
   display: flex;
   justify-content: center;
   align-items: center;
+  flex-direction: column;
 }
+.name {
+  display: flex;
+  align-items: center;
 
+}
 .sheet-name {
   margin-bottom: 0.7rem;
+}
+
+.sheet-meta {
+  border: 3px dotted #555;
+  padding: 10px;
+  border-radius: 10px;
 }
 
 .spinner {
@@ -642,6 +687,16 @@ onMounted(async () => {
   padding: 10px;
   border-radius: 5px;
   font-family:monospace;
+}
+
+.sheet-box select {
+  min-width: 500px;
+}
+
+
+.range-selector input {
+  padding: 5px;
+  border-radius: 5px;
 }
 
 .pst-btn {

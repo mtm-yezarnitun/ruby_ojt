@@ -208,8 +208,9 @@ module Api::V1
 
       begin
 
-        file = drive_service.get_file(spreadsheet_id, fields: 'owners')
+        file = drive_service.get_file(spreadsheet_id, fields: 'owners, modifiedTime')
         email = file.owners&.first&.email_address
+        last_updated = file.modified_time
 
         spreadsheet_ttl= sheet_service.get_spreadsheet(spreadsheet_id, fields: 'properties(title)')
         spreadsheet_title = spreadsheet_ttl.properties.title
@@ -225,6 +226,7 @@ module Api::V1
         render json: { 
           success: 'Fetched Successfully!', 
           owner: email, 
+          last_updated: last_updated,
           spreadsheet_id: spreadsheet_id, 
           spreadsheet_title: spreadsheet_ttl, 
           spreadsheet: spreadsheet, 
