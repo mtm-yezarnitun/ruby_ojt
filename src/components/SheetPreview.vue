@@ -5,17 +5,18 @@
         <h1 v-if="sheetData" class="spreadsheet-title">{{ sheetData.spreadsheet_title.properties.title }} / </h1>
         <h2 class="sheet-name">{{ sheetName }}</h2>
         
-        <span class="action-dropdown" v-if="isOwner">
+        <span class="action-dropdown">
           <button class="action-toggle" @click="toggleActions">
             ⚙️
           </button>
           <div v-if="showActions" class="action-menu">
-            <button @click="renameBox()">Rename</button>
-            <button @click="openCopyModal()">Copy To</button>
-            <button @click="openPasteModal()">Data Copy</button>
-            <button @click="duplicateBox()">Duplicate</button>
-            <button @click="goToCompare"> Comparison</button>
-            <button @click="deleteBox()">Delete</button>
+            <button v-if="isOwner" @click="renameBox()">Rename</button>
+            <button v-if="isOwner" @click="openCopyModal()">Copy To</button>
+            <button @click="openSortModal()">Sort</button>
+            <button v-if="isOwner" @click="openPasteModal()">Data Copy</button>
+            <button v-if="isOwner" @click="duplicateBox()">Duplicate</button>
+            <button v-if="isOwner" @click="goToCompare"> Comparison</button>
+            <button v-if="isOwner" @click="deleteBox()">Delete</button>
           </div>
         </span>
       </div>
@@ -34,7 +35,7 @@
       <router-link :to="`/sheets`">Back</router-link>
     </span>
 
-    <span class="edit-btn">
+    <span  v-if="isOwner" class="edit-btn">
       <router-link :to="`/sheets/${spreadsheetId}/sheet/${sheetName}/edit`" class="edit-btn"> Edit</router-link>
     </span>
 
@@ -122,11 +123,16 @@
       </div>
     </div>
     
-    <div class="sheet-controls">
+    <div v-if="sorting" class="sheet-controls">
+      <label for="filterText"> Filter : </label>
+      <input v-model="filterText"/>
+      <br>
+
       <button v-for="(col, index) in actualColCount" :key="index" @click="toggleSort(index)">
         Sort Col {{ index + 1 }} {{ sortColumnIndex === index ? (sortAsc ? '↑' : '↓') : '' }}
       </button>
       <button @click="reset"> Reset </button>
+      <button @click="close"> Close </button>
     </div>
 
     <div v-if="sheetData" class="sheet-preview">
@@ -184,8 +190,10 @@ const selectedSpreadsheetToCopy = ref(null)
 const selectedSheetToCopy = ref(null)
 const showActions = ref(false)
 
+const sorting = ref(false)
 const sortColumnIndex = ref(null)
 const sortAsc = ref(true)
+const filterText = ref(null)
 
 const currentUser = computed(() => store.getters['auth/user'])
 const sheet = computed(() => sheetData.value?.spreadsheet?.sheets?.[0])
@@ -220,6 +228,33 @@ const actualColCount = computed(() => {
 const formatDate = (isoString) => {
   return new Date(isoString).toLocaleString()
 }
+
+const displayedRows = computed(() => {
+  let result = [...rows.value]
+
+  if (filterText.value && filterText.value.trim() !== '') {
+    const query = filterText.value.toLowerCase()
+    result = result.filter(row =>
+      row.values?.some(cell =>
+        String(cell.formatted_value || '').toLowerCase().includes(query)
+      )
+    )
+  }
+
+  if (sortColumnIndex.value !== null) {
+    result.sort((a, b) => {
+      const valA = a.values?.[sortColumnIndex.value]?.formatted_value || ''
+      const valB = b.values?.[sortColumnIndex.value]?.formatted_value || ''
+      console.log(valA)
+      console.log(valB)
+      if (valA < valB) return sortAsc.value ? -1 : 1
+      if (valA > valB) return sortAsc.value ? 1 : -1
+      return 0
+    })
+  }
+
+  return result
+})
 
 function goToCompare() {
   router.push({ name: 'SheetCompare' }) 
@@ -308,6 +343,7 @@ function getCellStyle(format) {
 
 function deleteBox() {
   deleting.value = true
+  showActions.value = false
 }
 
 async function deleteSheet() {
@@ -347,6 +383,7 @@ async function deleteSheet() {
 
 function renameBox() {
   renaming.value = true
+  showActions.value = false
   newTtl.value = sheet.value?.properties?.title || ''
 }
 
@@ -382,6 +419,7 @@ async function renameSheet() {
 }
 
 function duplicateBox() {
+  showActions.value = false
   duplicating.value = true
   duplicateTitle.value = sheet.value?.properties?.title + " Copy" || ''
 }
@@ -418,6 +456,7 @@ async function duplicateSheetAction() {
 
 async function openCopyModal() {
   copying.value = true
+  showActions.value = false
   try {
     const response = store.getters['sheets/spreadsheets']
     allSpreadsheets.value = (response || []).filter(
@@ -551,6 +590,11 @@ async function copySelectedRangeToTarget() {
 }
 
 function toggleSort(colIndex) {
+  if (merges.value.length > 0) {
+  window.$toast.error("Sorting is disabled when merged cells exist.")
+  return
+  }
+
   if (sortColumnIndex.value === colIndex) {
     sortAsc.value = !sortAsc.value   
   } else {
@@ -559,28 +603,23 @@ function toggleSort(colIndex) {
   }
 }
 
-const displayedRows = computed(() => {
-  let result = [...rows.value]
-
-  if (sortColumnIndex.value !== null) {
-      console.log("---")
-    result.sort((a, b) => {
-      const valA = a.values?.[sortColumnIndex.value]?.formatted_value || ''
-      const valB = b.values?.[sortColumnIndex.value]?.formatted_value || ''
-      console.log(valA)
-      console.log(valB)
-      if (valA < valB) return sortAsc.value ? -1 : 1
-      if (valA > valB) return sortAsc.value ? 1 : -1
-      return 0
-    })
-  }
-
-  return result
-})
+async function openSortModal() {
+  sorting.value = true
+  showActions.value = false
+  filterText.value = ''
+}
 
 function reset(){
   sortColumnIndex.value = null
   sortAsc.value = true
+  filterText.value = ''
+}
+
+function close(){
+  sortColumnIndex.value = null
+  sortAsc.value = true
+  sorting.value = false
+  filterText.value = ''
 }
 
 onMounted(async () => {
@@ -591,6 +630,10 @@ onMounted(async () => {
     await store.dispatch('sheets/fetchSheetPreview', { spreadsheetId, sheetName })
     sheetData.value = store.getters['sheets/selectedSheetData']
     await store.dispatch('sheets/fetchSpreadsheets')
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape'){
+      if (showActions.value) { showActions.value = false }
+    }})
+
 
   } catch (e) {
     error.value = 'Failed to load sheet preview.'
@@ -599,6 +642,7 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
 </script>
 
 <style scoped>
@@ -606,7 +650,6 @@ onMounted(async () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  flex-direction: column;
 }
 .name {
   display: flex;
@@ -736,6 +779,19 @@ onMounted(async () => {
   min-width: 500px;
 }
 
+.sheet-controls {
+  margin-top: 20px;
+}
+
+.sheet-controls input{
+  padding: 10px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.sheet-controls label {
+  font-size: 18px;
+}
 
 .range-selector input {
   padding: 5px;
@@ -899,15 +955,24 @@ onMounted(async () => {
   text-overflow: ellipsis;
 }
 
+.sheet-preview th {
+  border: 1px solid #cbd5e0;
+  height: 40px;
+  padding: 0.4rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #333;
+}
+
 .back-btn {
   position: absolute;
-  top: 32%;
+  top: 40%;
   left: 9%;
 }
 
 .edit-btn {
   position: absolute;
-  top: 30%;
+  top: 37%;
   right: 9%;
 }
 
@@ -952,7 +1017,6 @@ onMounted(async () => {
 
 .action-dropdown {
   position: relative;
-  margin-left: 20px;
   display: inline-block;
 }
 

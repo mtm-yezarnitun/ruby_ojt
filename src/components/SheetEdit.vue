@@ -16,9 +16,6 @@
             <th>
               -
             </th>
-            <th>
-              -
-            </th>
             <th v-for="(col, cIndex) in editableRows[0]" :key="'header-' + cIndex">
               <button @click="removeColumn(cIndex)" class="btn-remove">🗑️</button>
             </th>
@@ -27,7 +24,6 @@
         </thead>
         <tbody>
           <tr v-for="(row, rIndex) in editableRows" :key="rIndex">
-]
             <td class="actions">
               <button @click="removeRow(rIndex)" class="btn-remove">🗑️</button> 
             </td>

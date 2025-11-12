@@ -230,6 +230,7 @@ module Api::V1
           spreadsheet_id: spreadsheet_id, 
           spreadsheet_title: spreadsheet_ttl, 
           spreadsheet: spreadsheet, 
+          grid_properties: sheet_obj.properties&.grid_properties || {},
           sheet_name: sheet_name,
           sheet_id: sheet_obj.properties&.sheet_id
           }, status: :ok
