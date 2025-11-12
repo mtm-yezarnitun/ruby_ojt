@@ -256,8 +256,6 @@ onMounted( async () => {
   const response = store.getters['sheets/spreadsheets']
   spreadsheets.value = (response || [])
 
-  store.dispatch('sheets/clearSelectedSpreadsheet');
-  store.dispatch('sheets/clearSelectedSheetData');
 })
 </script>
 

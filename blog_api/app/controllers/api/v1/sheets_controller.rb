@@ -149,7 +149,7 @@ module Api::V1
       gid = params[:gid] || '0'
       format = params[:format] || 'pdf'
 
-      export_url = "https://docs.google.com/spreadsheets/d/#{spreadsheet_id}/export?format=#{format}&portrait=false&size=A4&sheetnames=false&gid=#{gid}"
+      export_url = "https://docs.google.com/spreadsheets/d/#{spreadsheet_id}/export?format=#{format}&portrait=true&size=A4&sheetnames=false&gid=#{gid}"
 
       render json: { export_url: export_url }
     end
@@ -160,10 +160,10 @@ module Api::V1
 
       sheet_service = current_user.google_sheets_service
       return render json: { error: 'Google Sheets not connected' }, status: :unauthorized if sheet_service.nil?
-      
+
       spreadsheet_id = params[:id]
 
-      export_url = "https://docs.google.com/spreadsheets/d/#{spreadsheet_id}/export?format=pdf&portrait=false&size=A4&sheetnames=true"
+      export_url = "https://docs.google.com/spreadsheets/d/#{spreadsheet_id}/export?format=pdf&portrait=true&size=A4&sheetnames=true"
 
       render json: { export_url: export_url }
     end
