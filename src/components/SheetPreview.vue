@@ -15,6 +15,7 @@
             <button @click="openSortModal()">Sort</button>
             <button v-if="isOwner" @click="openPasteModal()">Data Copy</button>
             <button v-if="isOwner" @click="duplicateBox()">Duplicate</button>
+            <button @click="openExportModal()">Export</button>
             <button v-if="isOwner" @click="goToCompare"> Comparison</button>
             <button v-if="isOwner" @click="deleteBox()">Delete</button>
           </div>
@@ -82,6 +83,18 @@
         </select>
         <button @click="copySheetToSpreadsheet" class="cpy-btn">Copy</button>
         <button @click="copying = false" class="cpy-btn">Cancel</button>
+      </div>
+    </div>
+
+    <div v-if="exporting" class="export-modal">
+      <div class="export-box">
+        <p>Select file type to be export:</p>
+        <select v-model="formatType">
+          <option value="pdf"> PDF </option>
+          <option value="csv"> CSV </option>
+        </select>
+        <button @click="exportSheet()" class="exp-btn">Export</button>
+        <button @click="exporting = false" class="exp-btn">Cancel</button>
       </div>
     </div>
 
@@ -194,6 +207,9 @@ const sorting = ref(false)
 const sortColumnIndex = ref(null)
 const sortAsc = ref(true)
 const filterText = ref(null)
+
+const exporting = ref(false)
+const formatType = ref(null)
 
 const currentUser = computed(() => store.getters['auth/user'])
 const sheet = computed(() => sheetData.value?.spreadsheet?.sheets?.[0])
@@ -609,6 +625,13 @@ async function openSortModal() {
   filterText.value = ''
 }
 
+async function openExportModal() {
+  exporting.value = true
+  showActions.value = false
+  formatType.value = ''
+}
+
+
 function reset(){
   sortColumnIndex.value = null
   sortAsc.value = true
@@ -620,6 +643,32 @@ function close(){
   sortAsc.value = true
   sorting.value = false
   filterText.value = ''
+}
+
+async function exportSheet() {
+  if (!sheetData.value) return;
+  loading.value = true;
+  try {
+    const exportUrl = await store.dispatch('sheets/exportSheet', {
+      spreadsheetId,
+      sheetGid: sheetData.value.sheet_id,
+      format: formatType.value
+    });
+
+    if (exportUrl) {
+      exporting.value = false
+      window.$toast.success('Sheet Export Complete!');
+      window.open(exportUrl, '_blank'); 
+    } else {
+      window.$toast.error('Unable to export sheet!');
+      exporting.value = false
+    }
+  } catch (err) {
+    window.$toast.error('Failed to export sheet!');
+  } finally {
+    loading.value = false;
+    exporting.value = false
+  }
 }
 
 onMounted(async () => {
@@ -836,6 +885,41 @@ onMounted(async () => {
 .cpy-btn {
   padding: 5px;
 }
+
+
+.export-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.export-box {
+  display: flex;
+  flex-direction: column;
+  background-color: rgb(109, 109, 109);
+  padding: 1rem 3rem;
+  border-radius: 10px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.export-box select {
+  padding: 10px;
+  border-radius: 5px;
+  font-family:monospace;
+}
+
+.exp-btn {
+  padding: 5px;
+}
+
 
 .duplicate-modal {
   position: fixed;

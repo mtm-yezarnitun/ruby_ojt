@@ -138,6 +138,36 @@ module Api::V1
         render json: { error: e.message }, status: :unprocessable_entity
     end
 
+    def export
+      drive_service = current_user.google_drive_service
+      return render json: { error: 'Google Drive not connected' }, status: :unauthorized if drive_service.nil?
+
+      sheet_service = current_user.google_sheets_service
+      return render json: { error: 'Google Sheets not connected' }, status: :unauthorized if sheet_service.nil?
+
+      spreadsheet_id = params[:id]
+      gid = params[:gid] || '0'
+      format = params[:format] || 'pdf'
+
+      export_url = "https://docs.google.com/spreadsheets/d/#{spreadsheet_id}/export?format=#{format}&portrait=false&size=A4&sheetnames=false&gid=#{gid}"
+
+      render json: { export_url: export_url }
+    end
+
+    def export_whole_spreadsheet
+      drive_service = current_user.google_drive_service
+      return render json: { error: 'Google Drive not connected' }, status: :unauthorized if drive_service.nil?
+
+      sheet_service = current_user.google_sheets_service
+      return render json: { error: 'Google Sheets not connected' }, status: :unauthorized if sheet_service.nil?
+      
+      spreadsheet_id = params[:id]
+
+      export_url = "https://docs.google.com/spreadsheets/d/#{spreadsheet_id}/export?format=pdf&portrait=false&size=A4&sheetnames=true"
+
+      render json: { export_url: export_url }
+    end
+
     def copy_sheet_to_spreadsheet
       access_token = current_user.google_access_token
       source_spreadsheet_id = params[:source_spreadsheet_id]
@@ -194,7 +224,6 @@ module Api::V1
         render json: { success: false, error: "Failed to append rows" }, status: :internal_server_error
       end
     end
-
 
     def preview
       drive_service = current_user.google_drive_service

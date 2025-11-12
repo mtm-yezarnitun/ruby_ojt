@@ -39,6 +39,8 @@ Rails.application.routes.draw do
         end
         member do
           get 'sheet/:sheet_name/preview', to: 'sheets#preview'
+          get 'sheet/export', to: 'sheets#export'
+          get 'sheet/export_whole_spreadsheet', to: 'sheets#export_whole_spreadsheet'
           put 'sheet/:sheet_name/update', to: 'sheets#update'
           put 'rename_sheet', to:'sheets#rename_sheet'
           post 'add_sheet', to: 'sheets#add_new_sheet' 

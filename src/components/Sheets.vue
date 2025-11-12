@@ -5,8 +5,8 @@
 
       <button @click="goToCompare" :class="selectedSpreadsheet ? 'btn-compare' : 'btn-compare-before'"> Compare Sheets </button>
 
-      <button v-if="!all" @click="toggleSheets" class="btn-toggle" > Show All Sheets </button>
-      <button v-else @click="toggleSheets" class="btn-toggle" > Show My Sheets </button>
+      <button v-if="!all" @click="toggleSheets" class="btn-toggle" > Show My Sheets </button>
+      <button v-else @click="toggleSheets" class="btn-toggle" > Show All Sheets </button>
 
       <button v-if="selectedSpreadsheet" @click="clearSelection" class="btn-clear"> Clear Selection</button>
 
@@ -56,6 +56,7 @@
             Open in Google Sheets
         </a>
       </p>
+      <button @click="exportWhole()" class="export-btn"> Export whole SpreadSheet</button>
       <ul class="sheet-tabs">
         <li v-for="s in selectedSpreadsheet.sheets" :key="s.sheet_id" class="sheet-tab" @click="selectSheet(s.title)">
           {{ s.title }}
@@ -141,13 +142,12 @@ async function toggleSheets() {
   const response = store.getters['sheets/spreadsheets']
   
   if(all.value === true) {
-    spreadsheets.value = (response || [])
-  }
-
-  else {
-    spreadsheets.value = (response || []).filter(
+        spreadsheets.value = (response || []).filter(
     ss => ss.email === currentUser.value?.email
   ) 
+  }
+  else {
+    spreadsheets.value = (response || [])
   }
 }
 
@@ -231,12 +231,30 @@ async function addNewSheet() {
   }
 }
 
+async function exportWhole() {
+  if (!selectedSpreadsheet.value) return;
+  const id = selectedSpreadsheet.value.id
+  try {
+    const exportUrl = await store.dispatch('sheets/exportWholeSheet', {
+      id,
+    });
+
+    if (exportUrl) {
+      window.$toast.success('SpreadSheet Export Complete!');
+      window.open(exportUrl, '_blank'); 
+    } else {
+      window.$toast.error('Unable to export sheet!');
+    }
+  } catch (err) {
+    window.$toast.error('Failed to export sheet!');
+  } finally {
+  }
+}
+
 onMounted( async () => {
   await store.dispatch('sheets/fetchSpreadsheets') 
   const response = store.getters['sheets/spreadsheets']
-  spreadsheets.value = (response || []).filter(
-    ss => ss.email === currentUser.value?.email
-  ) 
+  spreadsheets.value = (response || [])
 
   store.dispatch('sheets/clearSelectedSpreadsheet');
   store.dispatch('sheets/clearSelectedSheetData');
@@ -374,6 +392,10 @@ onMounted( async () => {
   position: absolute;
   right: 0%;
   top: -70px;
+}
+
+.export-btn {
+  margin: 10px;
 }
 
 .btn-compare {

@@ -233,6 +233,38 @@ const sheets = {
         throw err;
       }
     },
+    async exportWholeSheet({ rootGetters }, { id }) {
+      const token = rootGetters['auth/token'] || localStorage.getItem('token');
+      if (!token) throw new Error("No authentication token found");
+
+      try {
+        const response = await axios.get(`${API_URL}/api/v1/sheets/${id}/sheet/export_whole_spreadsheet`, {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { id: id }
+        });
+
+        return response.data.export_url; 
+      } catch (err) {
+        console.error("Failed to export  :", err);
+        throw err;
+      }
+    },
+    async exportSheet({ rootGetters }, { spreadsheetId, sheetGid , format  }) {
+      const token = rootGetters['auth/token'] || localStorage.getItem('token');
+      if (!token) throw new Error("No authentication token found");
+
+      try {
+        const response = await axios.get(`${API_URL}/api/v1/sheets/${spreadsheetId}/sheet/export`, {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { id: spreadsheetId, gid: sheetGid , format: format}
+        });
+
+        return response.data.export_url; 
+      } catch (err) {
+        console.error("Failed to export :", err);
+        throw err;
+      }
+    },
     clearSelectedSheetData({ commit }) {
       commit('clearSelectedSheetData');
     },
