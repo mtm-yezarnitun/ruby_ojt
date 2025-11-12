@@ -121,11 +121,18 @@
         <button @click="pasting = false" class="pst-btn">Cancel</button>
       </div>
     </div>
+    
+    <div class="sheet-controls">
+      <button v-for="(col, index) in actualColCount" :key="index" @click="toggleSort(index)">
+        Sort Col {{ index + 1 }} {{ sortColumnIndex === index ? (sortAsc ? '↑' : '↓') : '' }}
+      </button>
+      <button @click="reset"> Reset </button>
+    </div>
 
     <div v-if="sheetData" class="sheet-preview">
       <table>
         <tbody>
-          <tr v-for="(row, rIndex) in rows" :key="rIndex">
+          <tr v-for="(row, rIndex) in displayedRows" :key="rIndex">
             <template v-for="(cell, cIndex) in (row.values || [])" :key="cIndex">
               <td v-if="!isMergedCellHidden(rIndex, cIndex)" :rowspan="getMergeSpan(rIndex, cIndex).rowspan"
                 :colspan="getMergeSpan(rIndex, cIndex).colspan" :style="getCellStyle(cell.effective_format)">
@@ -176,6 +183,9 @@ const sourceSheets= ref([])
 const selectedSpreadsheetToCopy = ref(null)
 const selectedSheetToCopy = ref(null)
 const showActions = ref(false)
+
+const sortColumnIndex = ref(null)
+const sortAsc = ref(true)
 
 const currentUser = computed(() => store.getters['auth/user'])
 const sheet = computed(() => sheetData.value?.spreadsheet?.sheets?.[0])
@@ -538,6 +548,39 @@ async function copySelectedRangeToTarget() {
   } finally {
     loading.value = false
   }
+}
+
+function toggleSort(colIndex) {
+  if (sortColumnIndex.value === colIndex) {
+    sortAsc.value = !sortAsc.value   
+  } else {
+    sortColumnIndex.value = colIndex
+    sortAsc.value = true
+  }
+}
+
+const displayedRows = computed(() => {
+  let result = [...rows.value]
+
+  if (sortColumnIndex.value !== null) {
+      console.log("---")
+    result.sort((a, b) => {
+      const valA = a.values?.[sortColumnIndex.value]?.formatted_value || ''
+      const valB = b.values?.[sortColumnIndex.value]?.formatted_value || ''
+      console.log(valA)
+      console.log(valB)
+      if (valA < valB) return sortAsc.value ? -1 : 1
+      if (valA > valB) return sortAsc.value ? 1 : -1
+      return 0
+    })
+  }
+
+  return result
+})
+
+function reset(){
+  sortColumnIndex.value = null
+  sortAsc.value = true
 }
 
 onMounted(async () => {

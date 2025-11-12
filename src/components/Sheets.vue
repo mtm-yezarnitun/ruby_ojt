@@ -264,6 +264,10 @@ onMounted( async () => {
   margin: 0 auto;
 }
 
+.btn-toggle {
+  margin-bottom: 20px;
+}
+
 .modal-box {
   background: #555;
   border-radius: 12px;
