@@ -44,6 +44,7 @@ Rails.application.routes.draw do
           put 'sheet/:sheet_name/update', to: 'sheets#update'
           put 'rename_sheet', to:'sheets#rename_sheet'
           post 'add_sheet', to: 'sheets#add_new_sheet' 
+          post 'import_csv', to: 'sheets#import_csv'
           post 'duplicate_sheet', to: 'sheets#duplicate_sheet'
           post 'sheets/copy_sheet_to_spreadsheet', to: 'sheets#copy_sheet_to_spreadsheet'
           put 'sheet/:sheet_id/append_rows', to: 'sheets#append_rows'

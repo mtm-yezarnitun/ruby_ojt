@@ -142,6 +142,27 @@ const sheets = {
         throw err;
       }
     },
+    async importCSVasSheet({ rootGetters }, { spreadsheetId, file }) {
+      const token = rootGetters['auth/token'] || localStorage.getItem('token')
+      if (!token) throw new Error("No authentication token found")
+
+      try {
+        const response = await axios.post(
+          `${API_URL}/api/v1/sheets/${spreadsheetId}/import_csv`,
+          file,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        )
+        return response.data
+      } catch (err) {
+        console.error("Failed to import CSV:", err)
+        throw err
+      }
+    },
     async deleteSheet({rootGetters},[spreadsheetId,sheetId]) {
       const token = rootGetters['auth/token'] || localStorage.getItem('token')
       if (!token) throw new Error("No authentication token found");

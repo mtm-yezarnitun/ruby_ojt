@@ -1,4 +1,6 @@
 require 'httparty'
+require 'csv'
+
 module Api::V1
   class SheetsController < ApplicationController
     before_action :authenticate_user!
@@ -109,6 +111,41 @@ module Api::V1
         render json: { success: false, error: e.message }, status: :bad_request
       rescue => e
       render json: { success: false, error: e.message }, status: :internal_server_error
+    end
+
+    def import_csv
+      sheet_service = current_user.google_sheets_service
+      return render json: { error: 'Google Sheets not connected' }, status: :unauthorized if sheet_service.nil?
+
+      spreadsheet_id = params[:id]
+      uploaded_file = params[:file]
+
+      if uploaded_file.nil?
+        return render json: { error: 'No CSV file uploaded' }, status: :bad_request
+      end
+
+      begin
+        csv_data = CSV.parse(uploaded_file.read)
+
+        new_sheet_name = File.basename(uploaded_file.original_filename, ".csv")
+        request = Google::Apis::SheetsV4::BatchUpdateSpreadsheetRequest.new(
+          requests: [{ add_sheet: { properties: { title: new_sheet_name } } }]
+        )
+        sheet_service.batch_update_spreadsheet(spreadsheet_id, request)
+
+        value_range = Google::Apis::SheetsV4::ValueRange.new(values: csv_data)
+        sheet_service.update_spreadsheet_value(
+          spreadsheet_id,
+          "#{new_sheet_name}!A1",
+          value_range,
+          value_input_option: 'USER_ENTERED'
+        )
+
+        render json: { success: true, message: "CSV imported as new sheet '#{new_sheet_name}'" }, status: :ok
+      rescue => e
+        Rails.logger.error "CSV import failed: #{e.message}"
+        render json: { error: "Failed to import CSV: #{e.message}" }, status: :internal_server_error
+      end
     end
 
     def duplicate_sheet

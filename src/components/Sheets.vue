@@ -34,17 +34,33 @@
 
     <div v-if="adding" class="modal-overlay">
       <div class="modal-box">
-        <h3>Create New Sheet</h3>
-        <input
-          v-model="newSheet"
-          type="text"
-          placeholder="Enter Sheet name"
-          class="modal-input"
-          @keyup.enter="addNewSheet"
-        />
+        <h3>Add New Sheet</h3>
+
         <div class="modal-actions">
-          <button @click="addNewSheet" class="btn-primary">Add</button>
-          <button @click="cancelAdd" class="btn-secondary">Cancel</button>
+          <button v-if="mode === 'csv'" @click="mode='create'" :class="mode==='create' ? 'btn-primary' : 'btn-secondary'">Manual Create</button>
+          <button v-if="mode === 'create'" @click="mode='csv'" :class="mode==='csv' ? 'btn-primary' : 'btn-secondary'">Import CSV</button>
+        </div>
+
+        <div v-if="mode==='create'">
+          <input
+            v-model="newSheet"
+            type="text"
+            placeholder="Enter Sheet name"
+            class="modal-input"
+            @keyup.enter="addNewSheet"
+          />
+          <div class="modal-actions">
+            <button @click="addNewSheet" class="btn-primary">Add</button>
+            <button @click="cancelAdd" class="btn-secondary">Cancel</button>
+          </div>
+        </div>
+
+        <div v-else>
+          <input type="file" accept=".csv" @change="onCSVSelect" class="modal-input" />
+          <div class="modal-actions">
+            <button @click="importCSV" class="btn-primary" :disabled="!selectedCSV">Import</button>
+            <button @click="cancelAdd" class="btn-secondary">Cancel</button>
+          </div>
         </div>
       </div>
     </div>
@@ -75,6 +91,26 @@
         >
         🗑️ Delete
       </button>
+      </div>
+    </div>
+
+    <div v-if="showCSVConfirm" class="csv-modal-overlay">
+      <div class="csv-modal-box">
+        <h3>Confirm CSV Import</h3>
+        <p>This CSV will be imported as a new sheet in "{{ selectedSpreadsheet.spreadsheet_title }}"</p>
+
+        <div class="preview-box">
+          <table class="csv-preview">
+            <tr v-for="(row, rIndex) in csvPreview" :key="rIndex">
+              <td v-for="(col, cIndex) in row" :key="cIndex">{{ col }}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="modal-actions">
+          <button @click="confirmImportCSV" class="btn-primary">Confirm Import</button>
+          <button @click="cancelCSVImport" class="btn-secondary">Cancel</button>
+        </div>
       </div>
     </div>
 
@@ -112,12 +148,21 @@ const spreadsheets = ref([])
 const selectedSpreadsheet = computed(() => store.getters['sheets/selectedSpreadsheet'])
 const loading = computed(() => store.getters['sheets/loading'])
 const error = computed(() => store.getters['sheets/error'])
+
 const creating = ref(false)
 const newTitle = ref('')
+
 const adding = ref(false)
 const newSheet = ref('')
+
 const deleting = ref(null)
 const all = ref(false)
+
+const mode = ref('create')
+const selectedCSV = ref(null)
+const csvPreview = ref([])
+const showCSVConfirm = ref(false) 
+
 
 const currentUser = computed(() => store.getters['auth/user'])
 
@@ -251,6 +296,53 @@ async function exportWhole() {
   }
 }
 
+function onCSVSelect(event) {
+  selectedCSV.value = event.target.files[0];
+  if (!selectedCSV.value) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target.result;
+    const rows = text.split(/\r?\n/).map(row => row.split(','));
+    csvPreview.value = rows.slice(0, 20); 
+    showCSVConfirm.value = true;
+  };
+  reader.readAsText(selectedCSV.value);
+}
+
+function cancelCSVImport() {
+  selectedCSV.value = null;
+  csvPreview.value = [];
+  showCSVConfirm.value = false;
+  adding.value = false;
+}
+
+async function confirmImportCSV() {
+  if (!selectedCSV.value) return;
+
+  try {
+    const formData = new FormData();
+    formData.append('file', selectedCSV.value);
+
+    await store.dispatch('sheets/importCSVasSheet', {
+      spreadsheetId: selectedSpreadsheet.value.id,
+      file: formData
+    });
+
+    window.$toast.success('CSV imported successfully!');
+  } catch (err) {
+    console.error(err);
+    window.$toast.error("Failed to import CSV.");
+  } finally {
+    selectedCSV.value = null;
+    csvPreview.value = [];
+    showCSVConfirm.value = false;
+    adding.value = false;
+    store.dispatch('sheets/fetchSpreadsheets');
+    selectSpreadsheet(selectedSpreadsheet.value.id);
+  }
+}
+
 onMounted( async () => {
   await store.dispatch('sheets/fetchSpreadsheets') 
   const response = store.getters['sheets/spreadsheets']
@@ -265,9 +357,21 @@ onMounted( async () => {
   margin-bottom: 1rem;
   font-weight: bold;
 }
-.modal-overlay {
+.modal-overlay{
   position: fixed;
   inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.csv-modal-overlay {
+  overflow: auto;
+  position: absolute;
+  top: 10px;
+  right: 16%;
   background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
@@ -311,6 +415,26 @@ onMounted( async () => {
   display: flex;
   justify-content: center;
   gap: 10px;
+}
+
+.csv-modal-box {
+  max-width: 1000px;
+  background: #555;
+  border-radius: 12px;
+  padding: 10px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  text-align: center;
+  animation: fadeIn 0.2s ease-in-out;
+}
+.csv-preview {
+  margin: 0 auto;
+  max-width: 1000px;
+  overflow-y: auto;
+}
+
+.csv-preview td{
+  border: 1px solid black;
+  min-width: 20px;
 }
 
 .btn-create {
