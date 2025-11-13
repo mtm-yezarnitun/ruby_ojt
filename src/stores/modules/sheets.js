@@ -7,6 +7,7 @@ const sheets = {
   state() {
     return {
       spreadsheets: [],
+      linkedRecords: [],
       selectedSpreadsheet: null,
       selectedSheetData: null,
       loading: false,
@@ -34,7 +35,16 @@ const sheets = {
     },
     clearSelectedSheetData(state) {
       state.selectedSheetData = null;
-    }
+    },
+    setLinkedRecords(state, links) {
+      state.linkedRecords = links;
+    },
+    addLinkedRecord(state, link) {
+      state.linkedRecords.push(link);
+    },
+    removeLinkedRecord(state, id) {
+      state.linkedRecords = state.linkedRecords.filter(l => l.id !== id);
+    },
 
   },
   actions: {
@@ -286,6 +296,47 @@ const sheets = {
         throw err;
       }
     },
+    async fetchLinkedRecords({ commit , rootGetters }) {
+      const token = rootGetters['auth/token'] || localStorage.getItem('token');
+      if (!token) throw new Error("No authentication token found");
+
+      const response = await axios.get(`${API_URL}/api/v1/sheets/linked_records`)
+      commit('setLinkedRecords', response.data.links)
+    },
+    async createLink({ commit, rootGetters }, linkData) {
+      const token = rootGetters['auth/token'] || localStorage.getItem('token');
+      if (!token) throw new Error("No authentication token found");
+
+      try {
+        const res = await axios.post(
+          `${API_URL}/api/v1/sheets/${linkData.source_spreadsheet_id}/link_columns`,
+          linkData,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (res.data.success) {
+          commit('addLinkedRecord', res.data.link);
+        }
+        return res.data;
+      } catch (err) {
+        console.error("Failed to create link:", err);
+        throw err;
+      }
+    },
+    async unlinkLink({ commit, rootGetters }, linkId) {
+      const token = rootGetters['auth/token'] || localStorage.getItem('token');
+      if (!token) throw new Error("No authentication token found");
+
+      try {
+        await axios.delete(`${API_URL}/api/v1/sheets/unlink_columns/${linkId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        commit('removeLinkedRecord', linkId);
+      } catch (err) {
+        console.error("Failed to unlink:", err);
+        throw err;
+      }
+    },
     clearSelectedSheetData({ commit }) {
       commit('clearSelectedSheetData');
     },
@@ -295,6 +346,7 @@ const sheets = {
   },
   getters: {
     spreadsheets: (state) => state.spreadsheets,
+    linkedRecords: (state) => state.linkedRecords,
     selectedSpreadsheet: (state) => state.selectedSpreadsheet,
     selectedSheetData: (state) => state.selectedSheetData,
     loading: (state) => state.loading,

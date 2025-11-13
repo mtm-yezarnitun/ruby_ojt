@@ -36,6 +36,10 @@ Rails.application.routes.draw do
       resources :sheets, only: [:index, :show, :destroy] do
         collection do
           post :create_spreadsheet
+          
+          post ':spreadsheet_id/link_columns', to: 'sheets#link_columns'
+          get '/linked_records', to: 'sheets#linked_records'
+          delete 'unlink_columns/:id', to: 'sheets#unlink_columns'
         end
         member do
           get 'sheet/:sheet_name/preview', to: 'sheets#preview'

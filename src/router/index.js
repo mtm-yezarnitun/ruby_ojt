@@ -19,6 +19,7 @@ import Sheets from "../views/SheetsPage.vue";
 import SheetPreview from "../views/SheetPreviewPage.vue";
 import SheetEditPage from "../views/SheetEditPage.vue";
 import SheetComparePage from "../views/SheetComparePage.vue";
+import LinkedRecordsPage from '../views/LinkedRecordsPage.vue'
 import AdminAnnouncements from "../views/AdminAnnouncements.vue";
 
 const routes = [
@@ -51,6 +52,9 @@ const routes = [
   { path: "/preview/:spreadsheetId/:sheetName", component: SheetPreview , props: true },
   { path: "/sheets/:spreadsheetId/sheet/:sheetName/edit", component: SheetEditPage, props: true },
   { path: '/compare', name: 'SheetCompare', component: SheetComparePage, props: true },
+  { path: '/links', name: 'LinkedRecords', component: LinkedRecordsPage, props: true },
+
+
   { path: "/announcements", component: AdminAnnouncements }
 ]
 

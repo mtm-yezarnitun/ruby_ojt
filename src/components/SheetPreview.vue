@@ -28,6 +28,13 @@
         <strong>Column Count :</strong> {{ actualColCount }}</p>
         <p><strong>Owner:</strong> {{ sheetData.owner }}</p>
         <p v-if="sheetData.last_updated"><strong>Last Updated:</strong> {{ formatDate(sheetData.last_updated) }}</p>
+
+        <p v-if="haveLinks.length > 0">
+          Linked Columns:
+          <span v-for="(link, index) in colLinks" :key="index">
+            {{ link.sourceColumn }} → {{ link.targetColumn }} ({{ link.targetSheet }})<span v-if="index < colLinks.length - 1">, </span>
+          </span>
+        </p>
       </div>
 
     </div>
@@ -214,6 +221,10 @@ const formatType = ref(null)
 const currentUser = computed(() => store.getters['auth/user'])
 const sheet = computed(() => sheetData.value?.spreadsheet?.sheets?.[0])
 const selectedRange = ref({ startRow: 0, endRow: 0, startCol: 0, endCol: 0 })
+
+const linkedRecords = ref([])
+const haveLinks = ref([])
+const colLinks = ref([])
 
 const merges = computed(() => sheet.value?.merges || [])
 const isOwner = computed(() => {
@@ -631,6 +642,36 @@ async function openExportModal() {
   formatType.value = ''
 }
 
+async function checkLinks() {
+  if (!linkedRecords.value || !sheetData.value) return;
+
+  const sheetLinks = linkedRecords.value.filter(link =>
+    link.source_spreadsheet_id === spreadsheetId || link.target_spreadsheet_id === spreadsheetId &&
+    link.source_sheet_name === sheetName.value || link.target_sheet_name === sheetName.value
+  );
+
+  colLinks.value = sheetLinks.map(link => {
+    if (link.source_sheet_name === sheetName.value && link.source_spreadsheet_id === spreadsheetId) {
+      return {
+        sourceColumn: link.source_column,
+        sourceSheet: link.source_sheet_name,
+        targetColumn: link.target_column,
+        targetSheet: link.target_sheet_name
+      };
+    } else if (link.target_sheet_name === sheetName.value && link.target_spreadsheet_id === spreadsheetId) {
+      return {
+        sourceColumn: link.target_column,
+        sourceSheet: link.target_sheet_name,
+        targetColumn: link.source_column,
+        targetSheet: link.source_sheet_name
+      };
+    }
+    return null;
+  })
+
+  haveLinks.value = colLinks.value.length > 0;
+}
+
 
 function reset(){
   sortColumnIndex.value = null
@@ -678,7 +719,15 @@ onMounted(async () => {
     error.value = null
     await store.dispatch('sheets/fetchSheetPreview', { spreadsheetId, sheetName })
     sheetData.value = store.getters['sheets/selectedSheetData']
+
     await store.dispatch('sheets/fetchSpreadsheets')
+
+    await store.dispatch('sheets/fetchLinkedRecords')
+    const res = store.getters['sheets/linkedRecords']
+
+    linkedRecords.value = ( res || [] )
+    await checkLinks()
+
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape'){
       if (showActions.value) { showActions.value = false }
     }})

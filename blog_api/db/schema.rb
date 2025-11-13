@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_10_15_063426) do
+ActiveRecord::Schema[7.1].define(version: 2025_11_13_051256) do
   create_table "announcements", force: :cascade do |t|
     t.string "title"
     t.text "message"
@@ -37,6 +37,17 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_15_063426) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["jti"], name: "index_jwt_denylists_on_jti"
+  end
+
+  create_table "linked_records", force: :cascade do |t|
+    t.string "source_spreadsheet_id", null: false
+    t.string "source_sheet_name", null: false
+    t.string "source_column", null: false
+    t.string "target_spreadsheet_id", null: false
+    t.string "target_sheet_name", null: false
+    t.string "target_column", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "posts", force: :cascade do |t|

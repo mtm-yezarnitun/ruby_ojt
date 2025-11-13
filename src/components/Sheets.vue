@@ -5,6 +5,8 @@
 
       <button @click="goToCompare" :class="selectedSpreadsheet ? 'btn-compare' : 'btn-compare-before'"> Compare Sheets </button>
 
+      <button @click="goToLinks" class="btn-links"> Links </button>
+
       <button v-if="!all" @click="toggleSheets" class="btn-toggle" > Show My Sheets </button>
       <button v-else @click="toggleSheets" class="btn-toggle" > Show All Sheets </button>
 
@@ -181,13 +183,17 @@ function goToCompare() {
   router.push({ name: 'SheetCompare' }) 
 }
 
+function goToLinks() {
+  router.push({ name: 'LinkedRecords' }) 
+}
+
 async function toggleSheets() {
   all.value = !all.value
   await store.dispatch('sheets/fetchSpreadsheets') 
   const response = store.getters['sheets/spreadsheets']
   
   if(all.value === true) {
-        spreadsheets.value = (response || []).filter(
+    spreadsheets.value = (response || []).filter(
     ss => ss.email === currentUser.value?.email
   ) 
   }
@@ -522,6 +528,12 @@ onMounted( async () => {
 
 .btn-compare {
   margin-bottom: 20px;
+}
+
+.btn-links {
+  position: absolute;
+  right: 15%;
+  top: -70px;
 }
 
 .loading-modal {

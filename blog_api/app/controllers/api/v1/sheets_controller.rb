@@ -370,6 +370,34 @@ module Api::V1
       end
     end
 
+    def link_columns
+      linked = LinkedRecord.new(
+        source_spreadsheet_id: params[:source_spreadsheet_id],
+        source_sheet_name: params[:source_sheet_name],
+        source_column: params[:source_column],
+        target_spreadsheet_id: params[:target_spreadsheet_id],
+        target_sheet_name: params[:target_sheet_name],
+        target_column: params[:target_column]
+      )
+
+      if linked.save
+        render json: { success: true, link: linked }, status: :created
+      else
+        render json: { success: false, errors: linked.errors.full_messages }, status: :unprocessable_entity
+      end
+    end
+
+    def linked_records
+      records = LinkedRecord.all.order(created_at: :desc)
+      render json: { success: true, links: records }
+    end
+
+    def unlink_columns
+      link = LinkedRecord.find(params[:id])
+      link.destroy
+      render json: { success: true }
+    end
+
     def destroy
       drive_service = current_user.google_drive_service
       return render json: { error: 'Google Drive not connected' }, status: :unauthorized if drive_service.nil?
