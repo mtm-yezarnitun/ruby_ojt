@@ -29,10 +29,13 @@
         <p><strong>Owner:</strong> {{ sheetData.owner }}</p>
         <p v-if="sheetData.last_updated"><strong>Last Updated:</strong> {{ formatDate(sheetData.last_updated) }}</p>
 
-        <p v-if="haveLinks.length > 0">
-          Linked Columns:
+        <p v-if="haveLinks">
+          <strong>
+            Linked Columns:
+          </strong>
+          <br>
           <span v-for="(link, index) in colLinks" :key="index">
-            {{ link.sourceColumn }} → {{ link.targetColumn }} ({{ link.targetSheet }})<span v-if="index < colLinks.length - 1">, </span>
+            {{ link.sourceColumn }} → {{ link.targetColumn }} ({{ link.targetSheet }})<span v-if="index < colLinks.length - 1">,<br></span>
           </span>
         </p>
       </div>
@@ -646,10 +649,17 @@ async function checkLinks() {
   if (!linkedRecords.value || !sheetData.value) return;
 
   const sheetLinks = linkedRecords.value.filter(link =>
-    link.source_spreadsheet_id === spreadsheetId || link.target_spreadsheet_id === spreadsheetId &&
-    link.source_sheet_name === sheetName.value || link.target_sheet_name === sheetName.value
+    (
+      link.source_spreadsheet_id === spreadsheetId &&
+      link.source_sheet_name === sheetName.value
+    ) ||
+    (
+      link.target_spreadsheet_id === spreadsheetId &&
+      link.target_sheet_name === sheetName.value
+    )
   );
 
+  console.log(sheetLinks)  
   colLinks.value = sheetLinks.map(link => {
     if (link.source_sheet_name === sheetName.value && link.source_spreadsheet_id === spreadsheetId) {
       return {
@@ -671,7 +681,6 @@ async function checkLinks() {
 
   haveLinks.value = colLinks.value.length > 0;
 }
-
 
 function reset(){
   sortColumnIndex.value = null
