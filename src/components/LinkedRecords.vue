@@ -83,19 +83,19 @@
       <button @click="linksToggle()">Existing Links</button>
       <div v-if="link">
         <div v-if="!linkedRecords.length">No links yet.</div>
-          <ul v-else>
-            <li
-              v-for="link in linkedRecords"
-              :key="link.id"
-            >
-              <span>
-                {{ sheetNames[link.source_sheet_id] || 'Unknown' }}'s {{ link.source_column }} --→
-                {{ sheetNames[link.target_sheet_id] || 'Unknown' }}'s {{ link.target_column }}
-              </span>
-              <button @click="unlink(link.id)" class="rmv-btn">Remove</button>
-            </li>
-          </ul>
-        </div>
+        <ul v-else>
+          <li
+            v-for="link in linkedRecords"
+            :key="link.id"
+          >
+            <span>
+              {{ sheetNames[link.source_sheet_id] || 'Unknown' }}'s {{ link.source_column }} --→
+              {{ sheetNames[link.target_sheet_id] || 'Unknown' }}'s {{ link.target_column }}
+            </span>
+            <button @click="unlink(link.id)" class="rmv-btn">Remove</button>
+          </li>
+        </ul>
+      </div>
     </div>
   </div>
 </template>
@@ -135,34 +135,19 @@ const canLink = computed(() =>
   selectedTargetColumn.value
 )
 
-onMounted(async () => {
-  try {
-    loading.value = true
-    await store.dispatch('sheets/fetchSpreadsheets')
-    const response = store.getters['sheets/spreadsheets']
-    allSpreadsheets.value = ( response || []).filter(ss => ss.email === currentUser.value?.email )
-    
-    await store.dispatch('sheets/fetchLinkedRecords')
-    const res = store.getters['sheets/linkedRecords']
-    linkedRecords.value = ( res || [] )
-    
-  } catch (e) {
-      console.error('Error loading spreadsheets', e)
-  } finally {
-      loading.value = false
-  }
-});
-
 async function linksToggle(){
   link.value = !link.value
   await loadSheetNames()
 }
+
 async function loadSheetNames() {
   loading.value = true
-  await store.dispatch('sheets/fetchSpreadsheets');
+  store.dispatch('sheets/fetchSpreadsheets');
   const spreadsheets = store.getters['sheets/spreadsheets'] || [];
 
-  for (const ss of spreadsheets) {
+  const  linkedSpreadsheets = spreadsheets.filter(ss => ss.email === currentUser.value?.email)
+  
+  for (const ss of linkedSpreadsheets) {
     await store.dispatch('sheets/fetchSpreadsheet', ss.id);
     const data = store.getters['sheets/selectedSpreadsheet'];
 
@@ -296,6 +281,31 @@ function reset() {
   sourceColumns.value = []
   targetColumns.value = []
 }
+
+onMounted(async () => {
+  try {
+    loading.value = true
+    await store.dispatch('sheets/fetchSpreadsheets')
+    const response = store.getters['sheets/spreadsheets']
+    allSpreadsheets.value = ( response || []).filter(ss => ss.email === currentUser.value?.email )
+    
+    await store.dispatch('sheets/fetchLinkedRecords')
+    const res = store.getters['sheets/linkedRecords']
+    
+    const userSpreadsheetIds = allSpreadsheets.value.map(s => s.id)
+
+    linkedRecords.value = (res || []).filter(link =>
+    userSpreadsheetIds.includes(link.source_spreadsheet_id) &&
+    userSpreadsheetIds.includes(link.target_spreadsheet_id)
+  )
+    console.log(linkedRecords)
+  } catch (e) {
+      console.error('Error loading spreadsheets', e)
+  } finally {
+      loading.value = false
+  }
+});
+
 </script>
 
 <style scoped>

@@ -28,8 +28,10 @@
         <strong>Column Count :</strong> {{ actualColCount }}</p>
         <p><strong>Owner:</strong> {{ sheetData.owner }}</p>
         <p v-if="sheetData.last_updated"><strong>Last Updated:</strong> {{ formatDate(sheetData.last_updated) }}</p>
+      </div>
 
-        <p v-if="haveLinks">
+      <div class="sheet-links" v-if="haveLinks">
+        <p>
           <strong>
             Linked Columns:
           </strong>
@@ -756,6 +758,7 @@ onMounted(async () => {
   display: flex;
   justify-content: center;
   align-items: center;
+  gap: 10px;
 }
 .name {
   display: flex;
@@ -767,6 +770,12 @@ onMounted(async () => {
 }
 
 .sheet-meta {
+  border: 3px dotted #555;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.sheet-links {
   border: 3px dotted #555;
   padding: 10px;
   border-radius: 10px;

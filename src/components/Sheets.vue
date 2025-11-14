@@ -275,7 +275,10 @@ async function addNewSheet() {
     adding.value = false
     newSheet.value = ''
     store.dispatch('sheets/fetchSpreadsheets');
+    const response = store.getters['sheets/spreadsheets']
+    spreadsheets.value = (response || [])
     selectSpreadsheet(selectedSpreadsheet.value.id);
+    
   } catch (err) {
     console.error(err)
     window.$toast.error("Failed to add sheet.")
@@ -355,6 +358,7 @@ onMounted( async () => {
   spreadsheets.value = (response || [])
 
 })
+
 </script>
 
 <style scoped>
