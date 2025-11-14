@@ -373,9 +373,11 @@ module Api::V1
     def link_columns
       linked = LinkedRecord.new(
         source_spreadsheet_id: params[:source_spreadsheet_id],
+        source_sheet_id: params[:source_sheet_id],
         source_sheet_name: params[:source_sheet_name],
         source_column: params[:source_column],
         target_spreadsheet_id: params[:target_spreadsheet_id],
+        target_sheet_id: params[:target_sheet_id],
         target_sheet_name: params[:target_sheet_name],
         target_column: params[:target_column]
       )

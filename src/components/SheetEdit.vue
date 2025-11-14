@@ -30,9 +30,18 @@
 
             <template v-for="(cell, cIndex) in row" :key="cIndex">
 
-              <td v-if="!isMergedCellHidden(rIndex, cIndex)" :rowspan="getMergeSpan(rIndex, cIndex).rowspan"
-                :colspan="getMergeSpan(rIndex, cIndex).colspan">
-                <input v-model="editableRows[rIndex][cIndex]" :style="{
+              <td v-if="!isMergedCellHidden(rIndex, cIndex)" 
+                  :rowspan="getMergeSpan(rIndex, cIndex).rowspan"
+                  :colspan="getMergeSpan(rIndex, cIndex).colspan">
+                <select
+                  v-if="dropdownOptions[cIndex]"
+                  v-model="editableRows[rIndex][cIndex]"
+                  style="width: 100%; font-size: 10px;">
+                  <option v-for="opt in dropdownOptions[cIndex]" :key="opt" :value="opt">
+                    {{ opt }}
+                  </option>
+                </select>
+                <input v-else v-model="editableRows[rIndex][cIndex]" :style="{
                   width: '100%',
                   border: 'none',
                   background: 'transparent',
@@ -74,6 +83,11 @@ const sheetData = ref(null)
 const editableRows = ref([])
 const loading = ref(true)
 const error = ref(null)
+
+const linkedRecords = ref([])
+const haveLinks = ref([])
+const colLinks = ref([])
+const dropdownOptions = ref({})
 
 const sheet = computed(() => sheetData.value?.spreadsheet?.sheets?.[0])
 const merges = computed(() => sheet.value?.merges || [])
@@ -151,6 +165,85 @@ async function saveChanges() {
   }
 }
 
+async function checkLinks() {
+  if (!linkedRecords.value || !sheetData.value) return;
+
+  const sheetLinks = linkedRecords.value.filter(link =>
+    (
+      link.target_spreadsheet_id === spreadsheetId &&
+      link.target_sheet_name === sheetName
+    )
+  );
+
+  colLinks.value = sheetLinks.map(link => {
+    const isSource = 
+      link.source_sheet_name === sheetName &&
+      link.source_spreadsheet_id === spreadsheetId;
+
+    return {
+      sourceColumn: isSource ? link.source_column : link.target_column,
+      targetColumn: isSource ? link.target_column : link.source_column,
+
+      targetSheet:  isSource ? link.target_sheet_name : link.source_sheet_name,
+      target_spreadsheet_id: isSource ? link.target_spreadsheet_id : link.source_spreadsheet_id,
+
+      sourceColumnIndex: findColumnIndex(isSource ? link.source_column : link.target_column),
+      targetColumnIndex: null,
+
+      direction: link.direction
+    };
+  }).filter(Boolean);
+
+  haveLinks.value = colLinks.value.length > 0;
+
+  dropdownOptions.value = {};
+
+  for (const link of colLinks.value) {
+    await loadDropdownValues(link);
+  }
+}
+
+async function loadDropdownValues(link) {
+  if(link.direction ==='source_to_target'){
+    try {
+        await store.dispatch('sheets/fetchSheetPreview', {
+        spreadsheetId: link.target_spreadsheet_id,
+        sheetName: link.targetSheet
+      });
+      const res = store.getters['sheets/selectedSheetData']
+      
+      const sheet = res?.spreadsheet?.sheets?.[0];
+      const rows = sheet?.data?.[0]?.row_data || [];
+
+      const headerRow = rows[0]?.values?.map(v => v.formatted_value) || [];
+      link.targetColumnIndex = headerRow.indexOf(link.targetColumn);
+
+      if (link.targetColumnIndex === -1) {
+        console.warn("Column not found in target sheet:", link.targetColumn);
+        return;
+      }
+
+      dropdownOptions.value[link.sourceColumnIndex] = [
+        ...new Set(
+        rows.map(r => {
+        const cell = r.values?.[link.targetColumnIndex];
+        return cell?.formatted_value || '';
+      }).filter(v => v !== '')
+      )
+    ];
+      
+    } catch (err) {
+      console.error("Dropdown load failed:", err);
+    }
+  }
+}
+
+
+function findColumnIndex(colName) {
+  const headerRow = editableRows.value[0];
+  return headerRow.indexOf(colName);
+}
+
 onMounted(async () => {
   loading.value = true
   try {
@@ -161,6 +254,12 @@ onMounted(async () => {
     )
     if (editableRows.value.length === 0) editableRows.value = [['']]
     if (editableRows.value[0].length === 0) editableRows.value[0] = ['']
+
+    await store.dispatch('sheets/fetchLinkedRecords')
+    const res = store.getters['sheets/linkedRecords']
+
+    linkedRecords.value = ( res || [] )
+    await checkLinks()
 
   } catch (err) {
     console.error(err)

@@ -659,7 +659,6 @@ async function checkLinks() {
     )
   );
 
-  console.log(sheetLinks)  
   colLinks.value = sheetLinks.map(link => {
     if (link.source_sheet_name === sheetName.value && link.source_spreadsheet_id === spreadsheetId) {
       return {

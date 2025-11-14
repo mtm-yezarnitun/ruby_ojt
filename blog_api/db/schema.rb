@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_11_13_051256) do
+ActiveRecord::Schema[7.1].define(version: 2025_11_14_043723) do
   create_table "announcements", force: :cascade do |t|
     t.string "title"
     t.text "message"
@@ -48,6 +48,9 @@ ActiveRecord::Schema[7.1].define(version: 2025_11_13_051256) do
     t.string "target_column", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "direction", default: "source_to_target", null: false
+    t.string "source_sheet_id", default: "xxxxxx", null: false
+    t.string "target_sheet_id", default: "xxxxxx", null: false
   end
 
   create_table "posts", force: :cascade do |t|

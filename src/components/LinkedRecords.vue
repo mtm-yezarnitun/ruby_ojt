@@ -3,7 +3,7 @@
     <div v-if="loading" class="loading-modal">
       <div class="loading-box">
         <div class="spinner"></div>
-        <p>Loading data...</p>
+        <p>Loading Links...</p>
       </div>
     </div>
     <span class="back-btn">
@@ -39,7 +39,7 @@
         <p>Source Sheet:</p>
         <select v-model="selectedSourceSheet" @change="loadSourceColumns">
           <option disabled value="">Select Sheet</option>
-          <option v-for="s in sourceSheets" :key="s.sheet_id" :value="s.title">
+          <option v-for="s in sourceSheets" :key="s.sheet_id" :value="s">
             {{ s.title }}
           </option>
         </select>
@@ -55,7 +55,7 @@
         <p>Target Sheet:</p>
         <select v-model="selectedTargetSheet" @change="loadTargetColumns">
           <option disabled value="">Select Sheet</option>
-          <option v-for="s in targetSheets" :key="s.sheet_id" :value="s.title">
+          <option v-for="s in targetSheets" :key="s.sheet_id" :value="s">
             {{ s.title }}
           </option>
         </select>
@@ -80,19 +80,23 @@
     </div>
 
     <div class="link-list">
-      <h3>Existing Links</h3>
-      <div v-if="!linkedRecords.length">No links yet.</div>
-      <ul v-else>
-        <li
-          v-for="link in linkedRecords"
-          :key="link.id"
-        >
-          <span> {{ link.source_sheet_name }} 's {{ link.source_column }}  ----→  {{ link.target_sheet_name }} 's {{ link.target_column }} </span>
-          <button @click="unlink(link.id)" class="rmv-btn">Remove</button>
-        </li>
-      </ul>
+      <button @click="linksToggle()">Existing Links</button>
+      <div v-if="link">
+        <div v-if="!linkedRecords.length">No links yet.</div>
+          <ul v-else>
+            <li
+              v-for="link in linkedRecords"
+              :key="link.id"
+            >
+              <span>
+                {{ sheetNames[link.source_sheet_id] || 'Unknown' }}'s {{ link.source_column }} --→
+                {{ sheetNames[link.target_sheet_id] || 'Unknown' }}'s {{ link.target_column }}
+              </span>
+              <button @click="unlink(link.id)" class="rmv-btn">Remove</button>
+            </li>
+          </ul>
+        </div>
     </div>
-
   </div>
 </template>
 
@@ -103,15 +107,15 @@ import { useStore } from 'vuex'
 const store = useStore()
 const loading = ref(false)
 
+const link = ref(false)
 const allSpreadsheets = ref([])
 const linkedRecords = ref([])
 const currentUser = computed(() => store.getters['auth/user'])
 
-
 const selectedSourceSpreadsheet = ref('')
 const selectedTargetSpreadsheet = ref('')
-const selectedSourceSheet = ref('')
-const selectedTargetSheet = ref('')
+const selectedSourceSheet = ref([])
+const selectedTargetSheet = ref([])
 const selectedSourceColumn = ref('')
 const selectedTargetColumn = ref('')
 
@@ -119,6 +123,8 @@ const sourceSheets = ref([])
 const targetSheets = ref([])
 const sourceColumns = ref([])
 const targetColumns = ref([])
+
+const sheetNames = ref({})
 
 const canLink = computed(() =>
   selectedSourceSpreadsheet.value &&
@@ -134,17 +140,38 @@ onMounted(async () => {
     loading.value = true
     await store.dispatch('sheets/fetchSpreadsheets')
     const response = store.getters['sheets/spreadsheets']
-
+    allSpreadsheets.value = ( response || []).filter(ss => ss.email === currentUser.value?.email )
+    
     await store.dispatch('sheets/fetchLinkedRecords')
     const res = store.getters['sheets/linkedRecords']
     linkedRecords.value = ( res || [] )
-    allSpreadsheets.value = ( response || []).filter(ss => ss.email === currentUser.value?.email )
+    
   } catch (e) {
       console.error('Error loading spreadsheets', e)
   } finally {
       loading.value = false
   }
 });
+
+async function linksToggle(){
+  link.value = !link.value
+  await loadSheetNames()
+}
+async function loadSheetNames() {
+  loading.value = true
+  await store.dispatch('sheets/fetchSpreadsheets');
+  const spreadsheets = store.getters['sheets/spreadsheets'] || [];
+
+  for (const ss of spreadsheets) {
+    await store.dispatch('sheets/fetchSpreadsheet', ss.id);
+    const data = store.getters['sheets/selectedSpreadsheet'];
+
+    (data.sheets || []).forEach(sheet => {
+      sheetNames.value[sheet.sheet_id] = sheet.title;
+    });
+  }
+  loading.value = false;
+}
 
 function extractColumns(data) {
   if (!data) return []
@@ -186,7 +213,7 @@ async function loadSourceColumns() {
   try {
     await store.dispatch('sheets/fetchSheetPreview', {
       spreadsheetId: selectedSourceSpreadsheet.value,
-      sheetName: selectedSourceSheet.value
+      sheetName: selectedSourceSheet.value.title
     })
     const src = store.getters['sheets/selectedSheetData']
 
@@ -204,7 +231,7 @@ async function loadTargetColumns() {
   try {
     await store.dispatch('sheets/fetchSheetPreview', {
       spreadsheetId: selectedTargetSpreadsheet.value,
-      sheetName: selectedTargetSheet.value
+      sheetName: selectedTargetSheet.value.title
     })
     const tag = store.getters['sheets/selectedSheetData']
 
@@ -223,14 +250,18 @@ async function createLink() {
     loading.value = true
     await store.dispatch('sheets/createLink', {
       source_spreadsheet_id: selectedSourceSpreadsheet.value,
-      source_sheet_name: selectedSourceSheet.value,
+      source_sheet_id: selectedSourceSheet.value.sheet_id,
+      source_sheet_name: selectedSourceSheet.value.title,
       source_column: selectedSourceColumn.value,
       target_spreadsheet_id: selectedTargetSpreadsheet.value,
-      target_sheet_name: selectedTargetSheet.value,
+      target_sheet_id: selectedTargetSheet.value.sheet_id,
+      target_sheet_name: selectedTargetSheet.value.title,
       target_column: selectedTargetColumn.value
     })
 
     await store.dispatch('sheets/fetchLinkedRecords')
+    const res = store.getters['sheets/linkedRecords']
+    linkedRecords.value = ( res || [] )
     window.$toast?.success?.('Link created successfully!')
   } catch (err) {
     console.error('Error creating link:', err)
